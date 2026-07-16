@@ -1,0 +1,894 @@
+
+  .banner .principal-banner{
+
+    position: relative;
+
+  }
+
+  .banner .principal-banner video{
+    height: 100%;
+    width: 100%;
+  }
+.banner  .overlay{
+  height: 100%;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.400);
+  position: absolute;
+  top: 0;    
+}
+
+.banner .principal-banner h1 {
+  position: absolute;
+  color: #fff !important;
+  font-size: 60px;
+  text-align: center;
+  width: 100%;
+  top: 30%;
+  font-family: 'Montserrat';
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.banner .principal-banner p {
+  position: absolute;
+  color: white !important;
+  font-size: 19px;
+  text-align: center;
+  width: 60%;
+  top: 45%;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 300;
+}
+
+.banner .principal-banner .btn {
+  background-color: transparent;
+  color: #fff;
+  font-size: 1.2rem;
+  padding: 1rem 2rem;
+  text-decoration: none;
+  position: absolute;
+  top: 70%;
+  font-family: 'Montserrat',sans-serif;
+  font-weight: bold;
+  text-transform: uppercase;
+  border-radius: 0;
+  border: 3px solid #fff;
+}
+
+.banner .principal-banner .card-booking{
+
+  position:absolute;
+  top:10%;
+  
+
+}
+
+.banner .principal-banner .card-booking .card{
+   
+  border-radius: 0;
+  border:none;
+  background: rgb(255 255 255 / 32%);
+  padding: 0;
+
+}
+
+.banner .principal-banner .card-booking .card .card-header{
+  background-color: #ffffff94 !important;
+  border:none;
+  font-size: 12px;
+}
+
+.banner .principal-banner .card-booking .card .btn-book{
+
+  width: 100%;
+  height: 40px;
+  background-color: #32373C;
+  border: none;
+  text-transform: uppercase;
+  color: white;
+}
+
+.banner .principal-banner .card-booking .form-label {
+  margin-bottom: .5rem;
+  color: #343440;
+  font-size: 14px;
+}
+
+.banner .principal-banner .card-booking .form-control {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: #212529;
+  background-color: transparent;
+  background-clip: padding-box;
+  border: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  text-align: center;
+}
+
+.banner .principal-banner .card-booking .form-control:focus {
+  color: #343440;
+  background-color: transparent;
+  border-color: #e6e6e6;
+  outline: 0;
+  box-shadow: none;
+}
+
+.banner .principal-banner .card-booking .form-select {
+  display: block;
+    width: 100%;
+    padding: .375rem 2.25rem .375rem .75rem;
+    -moz-padding-start: calc(0.75rem - 3px);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #e6e6e6a1;
+    background-repeat: no-repeat;
+    background-position: right .75rem center;
+    background-size: 16px 12px;
+    border: none;
+    border-radius: 0;
+    transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+.banner .principal-banner .card-booking .form-select:focus {
+  border-color: #e6e6e6;
+  outline: 0;
+  box-shadow: none;
+}
+
+.banner .principal-banner .card-booking .cheking{
+  padding: 5%;
+  background-color: #e6e6e6a1;
+  cursor: pointer;
+}
+
+.banner .principal-banner .card-booking #noches, #adultos, #niños {
+  display: none;
+}
+
+
+.titulo-bienvenidos span{
+  font-size: 35px;
+  font-weight: 600;
+  color: #343440;
+  text-transform: uppercase;
+
+}
+
+.titulo-bienvenidos{
+
+  
+  font-weight: 600;
+  color: #343440;
+  text-transform: uppercase;
+  font-size: 35px;
+}
+
+.bienvenidos hr{
+
+  height: 3px;
+  color: #848484;
+  width: 30%;
+  margin-left: 35%;
+  opacity: 100%;
+
+}
+
+.bienvenidos a{
+  
+  color: #343440;
+  text-decoration: none;
+  text-transform: uppercase;
+  border-radius: 0;
+  padding: 9px 27px;
+  font-size: 14px;
+
+}
+
+.bienvenidos .btn-outline-dark:hover {
+  color: #fff;
+  background-color: #343440;
+  border-color: #343440;
+}
+
+.text-bienvenido {
+  text-align: center;
+  text-transform: uppercase;
+  font-size: 20px;
+}
+
+.parallax{
+
+  background: #FFF fixed no-repeat 50% 50%;
+  background-size: cover;
+}
+
+#seccion1{
+   
+  background-image: url('../imagenes/inicio/recepcion2.jpeg');
+}
+
+#seccion1Movil{
+   
+  background-image: url('../imagenes/inicio/recepcion2.jpeg');
+  background-size: contain;
+}
+
+#seccion1 .container-fluid{
+
+  padding: 20%;
+}
+
+.servicios #owl-demo .item img{
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.servicios .list-servicios{
+
+  list-style: none;
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.servicios .list-servicios li{
+
+  padding: 9px;
+}
+
+.list-servicios li a{
+
+  text-decoration: none;
+  display: flex;
+  flex-direction: row;
+}
+
+.list-servicios li .fas {
+
+  font-size: 38px;
+  
+}
+
+
+.servicio p{
+
+  font-size: 13px;
+}
+
+.servicio{
+
+  margin-left: 9px;
+}
+
+.list-servicios .icon-servicio{
+
+  float: left;
+  margin-right: 10px;
+  margin-top: 10px;
+  display: block;
+  vertical-align: middle;
+  width: 100px;
+
+}
+
+.servicios .owl-thumb-item {
+  display: block;
+  width: 100%;
+  background: #f9f9f9;
+  margin-bottom: 16px;
+  border-radius: 2px;
+  padding: 9px;
+  -webkit-transition: .2s;
+  transition: .2s;
+}
+
+
+
+.servicios .owl-thumb-item.active {
+  background: #343440;
+  color: #fff;
+  -webkit-transition: all 0.1s ease-out;
+  transition: all 0.1s ease-out;
+}
+
+.servicios .owl-thumb-item .media-left {
+  color: #848484;
+  font-size: 2em;
+  line-height: 2em;
+  text-align: center;
+  margin-left: 14px;
+  float: left;
+  margin-right: 10px;
+  margin-top: 10px;
+  display: block;
+  vertical-align: middle;
+  width: 50px;
+}
+
+.servicios .owl-thumb-item .media-body{
+  display: table-cell;
+    vertical-align: top;
+}
+
+.servicios .owl-thumb-item .media-body h5{
+  font-weight: 600;
+    color: #343440;
+}
+.servicios .owl-thumb-item.active .media-body h5{
+
+  color: #fff;
+}
+.servicios .owl-thumb-item .media-body p {
+  font-size: 12px;
+  color: #383838;
+  margin: 7px 0;
+}
+
+.servicios .owl-thumb-item.active .media-left{
+  color: #FFF;
+}
+
+.servicios .owl-thumb-item.active .media-body p{
+  color: #fff;
+}
+
+.titulo-servicios{
+  text-align: center;
+}
+
+.titulo-servicios h1{
+  text-transform: uppercase;
+  color: #343440;
+  font-weight: 600;
+  font-size: 45px;
+  font-family: 'Montserrat';
+    
+}
+
+@media (max-width:1024px) {
+
+  .banner .principal-banner h1{
+
+     top: 25%;
+  }
+
+  .banner .principal-banner p{
+
+    width: 70%;
+    top: 45%;
+  }
+
+  .booking label {
+    font-size: 12px !important;
+  }
+
+  .booking form .btn-reservarHabitacion{
+
+    height: 86px !important;
+  }
+
+
+}
+
+@media(max-width:768px){
+
+  .banner .principal-banner h1{
+
+    top: 15%;
+    font-size: 4rem;
+  }
+
+  .banner .principal-banner p {
+    width: 90%;
+    top: 40%;
+  }
+
+  .banner .principal-banner .btn{
+
+    top: 70%;
+  }
+
+}
+
+@media (max-width:425px) and (min-width:320px) {
+
+  .banner .principal-banner h1{
+
+     top: 10%;
+     font-size: 2rem;
+  }
+
+  .banner .principal-banner p{
+
+    width:90%;
+    top: 35%;
+    font-size: 12px;
+  }
+
+  .banner .principal-banner .btn{
+
+    padding: 0.5rem 0.8rem;
+    top: 65%;
+    font-size: 1rem;
+
+  }
+  
+}
+
+.booking{
+  padding-top: 5%;
+  padding-bottom: 5%;
+  background-color: #343440;
+}
+
+.booking form {
+
+  text-align: left;
+}
+
+.booking .box-input{
+
+  border: 1px solid #bfb8aa;
+  background: #fff;
+  padding: 5%;
+  text-transform: uppercase;
+  color: #343440;
+}
+
+.booking label {
+  font-size: medium;
+  color: #edb83a;
+  font-weight: 500;
+}
+
+.booking .form-control {
+  display: block;
+  width: 100%;
+  padding: .375rem .75rem;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #343440;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
+  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.booking .box-select{
+
+  border: 1px solid #bfb8aa;
+  background: #fff;
+  padding: 5%;
+  text-transform: uppercase;
+  color: #343440;
+}
+
+.booking .form-select {
+  color: #343440;
+  background-color: #fff;
+  border: none;
+  border-radius: 0;
+  font-size: 18px;
+}
+
+.booking .form-select option{
+
+  font-size: 16px;
+}
+
+.booking form .btn-reservarHabitacion {
+
+  background-color: #edb83a;
+  color: white;
+  text-transform: uppercase;
+  font-weight: 500;
+  width: 100%;
+  height: 94px;
+  border-radius: 0;
+} 
+
+/*HABITACIONES*/
+
+.habitaciones .tit-habitaciones{
+
+  text-align: center;
+  font-weight: 600;
+  color: #343440;
+}
+
+
+#habitaciones .owl-item {
+  /*transition: all 1s ease-out;*/
+  -webkit-backface-visibility: hidden;
+  -webkit-transform: translateZ(0) scale(1, 1);
+}
+
+.habitaciones .owl-wrapper {
+  position: relative;
+  height: auto;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.habitaciones .cards {
+  position: relative;
+  height: auto;
+  width: 100%;
+  padding: 4em 0;
+  background-color: #fefefe;
+}
+
+.habitaciones .card {
+  display: flex;
+  justify-content: center;
+  height: 523px;
+  padding: 1em;
+  margin: 1em 0;
+  border-radius: 0;
+  opacity: 0.7;
+  transform: scale(0.87);
+  transition: transform 0.4s 0.5s ease-out, opacity 1s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: none;
+}
+
+.habitaciones .owl-carousel .active, .dot:hover {
+  background-color: #fff;
+}
+
+.habitaciones .active .card {
+  box-shadow: 0 0px 1em rgba(0, 0, 0, 0.2);
+  transform: box-shadow 0.3s ease, transform 0.1s 0.4s ease-in, opacity 0.4s ease;
+  background-color: #FFF;
+}
+.habitaciones .card__content {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  color: #fff;
+  opacity: 1;
+  position: absolute;
+  top: 80%;
+  flex-wrap: wrap;
+  flex-direction: row;
+  align-content: flex-start;
+  justify-content: left;
+  width: 100%;
+}
+.habitaciones .active .card__content {
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+  
+.habitaciones .card__title {
+  display: inline-block;
+  font-size: 25px;
+  overflow: hidden;
+  font-weight: 500;
+}
+.habitaciones .card__title span {
+  display: inline-block;
+  -webkit-animation: slide-up 0.4s 0s ease both;
+          animation: slide-up 0.4s 0s ease both;
+}
+
+.habitaciones .card__content .card__precio {
+  display: inline-block;
+  -webkit-animation: slide-up 0.4s 0s ease both;
+          animation: slide-up 0.4s 0s ease both;
+  font-weight: 300;
+}
+
+.habitaciones .card__content .card__precio span{
+
+  font-weight: 500;
+}
+.habitaciones .center.active .card__title span, .center.active.cloned:last-child .card__title span {
+  opacity: 1;
+  -webkit-animation: slide-down 0.4s 0.4s ease both;
+          animation: slide-down 0.4s 0.4s ease both;
+  transition: transform 0.3s 0.4s ease, opacity 0.3s ease;
+}
+
+.habitaciones .center.active .card__content .card__precio, .center.active.cloned:last-child .card__content .card__precio {
+  opacity: 1;
+  -webkit-animation: slide-down 0.4s 0.4s ease both;
+          animation: slide-down 0.4s 0.4s ease both;
+  transition: transform 0.3s 0.4s ease, opacity 0.3s ease;
+}
+
+.habitaciones .card__content .btn-habitacion {
+
+  display: inline-block;
+  -webkit-animation: slide-up 0.4s 0s ease both;
+          animation: slide-up 0.4s 0s ease both;
+  background-color: #d0d0d091;
+  color: #fff;
+  border-radius: 0px;
+  font-family: 'Montserrat';
+  font-weight: 600;
+  font-size: 20px;
+}
+.habitaciones .card__content .d-flex{
+  display: flex!important;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  align-content: center;
+  flex-wrap: nowrap;
+}
+.habitaciones .center.active .card__content .btn-habitacion, .center.active.cloned:last-child .card__content .btn-habitacion {
+  opacity: 1;
+  -webkit-animation: slide-down 0.4s 0.4s ease both;
+          animation: slide-down 0.4s 0.4s ease both;
+  transition: transform 0.3s 0.4s ease, opacity 0.3s ease;
+}
+
+.habitaciones .center .card {
+  opacity: 1;
+  transform: scale(1);
+}
+.habitaciones .center .card:hover {
+  box-shadow: 0 8px 16px -5px rgba(0, 0, 0, 0.4);
+}
+
+.habitaciones .owl-item:nth-of-type(1n) .card {
+  /*background-color: #ff527b;*/
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.habitaciones .owl-item:nth-of-type(2n) .card {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.habitaciones .owl-item:nth-of-type(3n) .card {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.habitaciones .owl-item:nth-of-type(4n) .card {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.habitaciones .owl-item:nth-of-type(5n) .card {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.habitaciones .owl-theme .owl-dots .owl-dot span {
+  width: 4em;
+  height: 4px;
+  margin: 0 0.5em;
+  background: #D6D6D6;
+  display: block;
+  -webkit-backface-visibility: visible;
+  transition: opacity 0.2s ease;
+  border-radius: 0;
+}
+
+.habitaciones .owl-theme .owl-dots .owl-dot.active span,
+.habitaciones .owl-theme .owl-dots .owl-dot:hover span {
+  background: #ff527b;
+}
+
+@-webkit-keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -120%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0%, 0);
+  }
+}
+
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -120%, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0%, 0);
+  }
+}
+@-webkit-keyframes slide-up {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -120%, 0);
+  }
+}
+@keyframes slide-up {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -120%, 0);
+  }
+}
+
+/*.habitaciones article::before{
+  content:'';
+	position: absolute;
+  top: 60%;
+	bottom: 0;
+	left: 0;
+	right: 0;
+  background: -webkit-linear-gradient(top, transparent, rgba(5, 5, 5, 0.6));
+}*/
+
+.habitaciones .card__content .col-lg-4{
+
+  text-align: center;
+}
+
+@media(max-width:768px){
+
+  
+  .habitaciones .card__content .card__title{
+    
+    font-size: 20px;
+
+  }
+
+  .habitaciones .card__content .btn-habitacion {
+
+    font-size: 14px;
+  }
+
+  .habitaciones .card__content .card__precio {
+
+    font-size: 20px;
+  }
+}
+
+@media (max-width:425px) and (min-width:320px){
+
+  .habitaciones .card{
+
+    height: 300px;
+  }
+
+  .habitaciones .card__content {
+
+    top: 75%;
+  }
+
+  .habitaciones .card__content .card__title{
+    
+    font-size: x-small;
+
+  }
+
+  .habitaciones .card__content .btn-habitacion {
+
+    font-size: x-small;
+  }
+
+  .habitaciones .card__content .card__precio {
+
+    font-size: x-small;
+  }
+  .habitaciones article::before{
+    top: 40%;
+    
+    
+  }
+  .habitaciones .card__content .col-lg-4{
+
+    text-align: left;
+  }
+}
+.logoMovil{
+  width: 30%;
+}
+/*END HABITACIONES*/
+
+/*SECCION TRIPADVISOR*/
+
+.seccion-tripadvisor .container-fluid{
+
+  background-color: #343440;
+}
+
+.seccion-tripadvisor a{
+
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  color: #fff;
+}
+
+#serviciosDesktop{
+  display: block;
+}
+#serviciosMovil{
+  display: none;
+}
+
+#seccion1{
+  display: block;
+}
+#seccion1Movil{
+  display: none;
+}
+@media only screen and (max-width: 425px) {
+  #serviciosDesktop{
+      display: none;
+  }
+  #serviciosMovil{
+      display: block;
+  }
+  #seccion1{
+    display: none;
+  }
+  #seccion1Movil{
+    display: block;
+  }
+}
+@media only screen and (max-width: 500px) {
+  .logoMovil{
+    width: 50%;
+  }
+}
+video::-webkit-media-controls {
+  display:none !important;
+}
+*::-webkit-media-controls-panel {
+  display: none!important;
+  -webkit-appearance: none;
+}
+
+/* Old shadow dom for play button */
+
+*::-webkit-media-controls-play-button {
+  display: none!important;
+  -webkit-appearance: none;
+}
+
+/* New shadow dom for play button */
+
+/* This one works! */
+
+*::-webkit-media-controls-start-playback-button {
+  display: none!important;
+  -webkit-appearance: none;
+}
