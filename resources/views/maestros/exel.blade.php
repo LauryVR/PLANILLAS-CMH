@@ -4,10 +4,10 @@
 
 <div class="container py-4">
 
-    {{-- Alertas de estado o errores --}}
+    {{-- Alertas de estado --}}
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
+            <i class="fas fa-check-circle me-1"></i> {{ session('success') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
@@ -23,7 +23,7 @@
         </div>
     @endif
 
-    {{-- Card Formulario --}}
+    {{-- Card Cargar Excel --}}
     <div class="card shadow-sm border-0">
 
         <div class="card-header bg-success text-white">
@@ -56,7 +56,7 @@
                     <div class="col-md-2">
                         <button type="submit" class="btn btn-success w-100">
                             <i class="fas fa-upload me-1"></i>
-                            Subir
+                            Previsualizar
                         </button>
                     </div>
 
@@ -68,51 +68,101 @@
 
     </div>
 
-    {{-- Tabla de Resultados --}}
+    {{-- Tabla de Resultados Editables --}}
     @if(isset($datos) && count($datos) > 0)
 
-        <div class="card mt-4 shadow-sm border-0">
+        <form action="{{ route('excel.guardar') }}" method="POST">
+            @csrf
 
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-table me-2"></i>
-                    Datos encontrados en Excel
-                </h5>
-            </div>
+            <div class="card mt-4 shadow-sm border-0">
 
-            <div class="card-body">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>
+                        Revisar y Modificar Datos Antes de Guardar
+                    </h5>
 
-                <div class="table-responsive">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>
+                        Guardar en Base de Datos
+                    </button>
+                </div>
 
-                    <table class="table table-bordered table-hover table-striped mb-0">
+                <div class="card-body">
 
-                        <thead class="table-success">
-                            <tr>
-                                <th>Columna 1</th>
-                                <th>Columna 2</th>
-                                <th>Columna 3</th>
-                            </tr>
-                        </thead>
+                    <div class="table-responsive">
 
-                        <tbody>
+                        <table class="table table-bordered table-hover align-middle mb-0">
 
-                            @foreach($datos as $fila)
+                            <thead class="table-success">
                                 <tr>
-                                    <td>{{ $fila[0] ?? '' }}</td>
-                                    <td>{{ $fila[1] ?? '' }}</td>
-                                    <td>{{ $fila[2] ?? '' }}</td>
+                                    <th width="50" class="text-center">#</th>
+                                    <th>Nombre</th>
+                                    <th>DNI</th>
+                                    <th>No. Colegiado</th>
                                 </tr>
-                            @endforeach
+                            </thead>
 
-                        </tbody>
+                            <tbody>
 
-                    </table>
+                                @php $contador = 0; @endphp
+
+                                @foreach($datos as $index => $fila)
+
+                                    {{-- Ignorar la primera fila si son los encabezados del Excel --}}
+                                    @if($index == 0 && strtolower(trim($fila[0] ?? '')) == 'nombre')
+                                        @continue
+                                    @endif
+
+                                    {{-- Si la fila está vacía completamente la saltamos --}}
+                                    @if(empty($fila[0]) && empty($fila[1]))
+                                        @continue
+                                    @endif
+
+                                    <tr>
+                                        <td class="text-center fw-bold text-muted">
+                                            {{ $contador + 1 }}
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="maestros[{{ $contador }}][nombre]"
+                                                   value="{{ $fila[0] ?? '' }}"
+                                                   class="form-control form-control-sm"
+                                                   required>
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="maestros[{{ $contador }}][dni]"
+                                                   value="{{ $fila[1] ?? '' }}"
+                                                   class="form-control form-control-sm"
+                                                   required>
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="maestros[{{ $contador }}][no_colegiado]"
+                                                   value="{{ $fila[2] ?? '' }}"
+                                                   class="form-control form-control-sm">
+                                        </td>
+                                    </tr>
+
+                                    @php $contador++; @endphp
+
+                                @endforeach
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
 
                 </div>
 
             </div>
 
-        </div>
+        </form>
 
     @endif
 

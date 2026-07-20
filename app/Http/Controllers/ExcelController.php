@@ -40,4 +40,32 @@ class ExcelController extends Controller
 
         return view('maestros.exel', compact('datos'));
     }
+
+
+    // Nuevo método para guardar los datos editados en la BD
+    public function guardarBD(Request $request)
+    {
+        $request->validate([
+            'maestros' => 'required|array',
+            'maestros.*.nombre' => 'required|string|max:255',
+            'maestros.*.dni' => 'required|string|max:20',
+            'maestros.*.no_colegiado' => 'nullable|string|max:50',
+        ]);
+
+        $registros = $request->input('maestros');
+
+        foreach ($registros as $datosMaestro) {
+            // updateOrCreate evita duplicar registros si el DNI ya existe
+            Maestro::updateOrCreate(
+                ['dni' => $datosMaestro['dni']], // Condición de búsqueda
+                [
+                    'nombre' => $datosMaestro['nombre'],
+                    'no_colegiado' => $datosMaestro['no_colegiado'],
+                ]
+            );
+        }
+
+        return redirect()->route('maestros.index')->with('success', '¡Se han guardado ' . count($registros) . ' registros en la base de datos!');
+    }
+
 }

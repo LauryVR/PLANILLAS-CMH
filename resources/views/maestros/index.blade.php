@@ -35,8 +35,10 @@
 
                 {{-- Botón para abrir el modal de Excel --}}
                 <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#cargarExcelModal">
-                    <i class="fas fa-file-excel text-success me-1"></i>
-                    Cargar Excel
+                   <a href="{{ route('excel.index') }}" class="btn btn-light">
+    <i class="fas fa-file-excel text-success me-1"></i>
+    Cargar Excel
+</a>
                 </button>
 
             </div>
@@ -188,40 +190,6 @@
 
 </div>
 
-<!-- Modal para Cargar Excel -->
-<div class="modal fade" id="cargarExcelModal" tabindex="-1" aria-labelledby="cargarExcelModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-
-            <form action="{{ route('excel.cargar') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title" id="cargarExcelModalLabel">
-                        <i class="fas fa-file-excel me-1"></i> Cargar Archivo Excel
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="archivoExcel" class="form-label fw-bold">Seleccione el archivo (.xlsx o .xls)</label>
-                        <input type="file" class="form-control" id="archivoExcel" name="archivo" accept=".xlsx,.xls" required>
-                    </div>
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-upload me-1"></i> Subir
-                    </button>
-                </div>
-
-            </form>
-
-        </div>
-    </div>
-</div>
 
 
 <!-- Incluir biblioteca SweetAlert2 -->

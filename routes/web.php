@@ -35,3 +35,6 @@ Route::get('/excel', [ExcelController::class, 'index'])
 
 Route::post('/excel/cargar', [ExcelController::class, 'cargar'])
     ->name('excel.cargar');
+
+    Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
+Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
