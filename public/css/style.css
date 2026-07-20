@@ -17,3 +17,26 @@
     position: relative;
 }
   
+body{
+    background-color:#f4f6f9;
+}
+
+.card{
+    border-radius:15px;
+}
+
+.card-header{
+    padding:20px;
+}
+
+.table th{
+    text-align:center;
+}
+
+.table td{
+    vertical-align:middle;
+}
+
+.pagination{
+    margin-bottom:0;
+}

@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ExcelController;
+use App\Http\Controllers\MaestroController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,3 +18,20 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('inicio');
 });
+
+
+
+Route::get('/maestros', [MaestroController::class, 'index'])
+    ->name('maestros.index');
+
+Route::put('/maestros/{id}', [MaestroController::class, 'update'])
+    ->name('maestros.update');
+
+
+    
+
+Route::get('/excel', [ExcelController::class, 'index'])
+    ->name('excel.index');
+
+Route::post('/excel/cargar', [ExcelController::class, 'cargar'])
+    ->name('excel.cargar');
