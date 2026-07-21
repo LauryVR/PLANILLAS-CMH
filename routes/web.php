@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\MaestroController;
-
+use App\Http\Controllers\CuentaController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -36,3 +36,11 @@ Route::get('/excel/cargar', [ExcelController::class, 'index'])->name('excel.inde
 Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
 Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
 Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
+// Ruta para ver la vista principal / subir Excel
+Route::get('/cuentas', [CuentaController::class, 'index'])->name('cuentas.index');
+
+// Ruta POST para procesar el Excel cargado (NOMBRES OBLIGATORIOS)
+Route::post('/cuentas/cargar', [CuentaController::class, 'cargarExcel'])->name('cuentas.cargar');
+
+// Ruta POST para guardar los datos finales en la base de datos
+Route::post('/cuentas/guardar', [CuentaController::class, 'guardar'])->name('cuentas.guardar');

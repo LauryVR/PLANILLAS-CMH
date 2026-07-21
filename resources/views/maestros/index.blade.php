@@ -55,31 +55,44 @@
                             {{ $maestros->total() }}
                         </span>
                     </h6>
-                </div>
+                </div></div>
 
-                {{-- Buscador dinámico --}}
-                <div class="col-md-6">
-                    <form action="{{ route('maestros.index') }}" method="GET">
-                        <div class="input-group">
-                            <input
-                                type="text"
-                                name="buscar"
-                                class="form-control"
-                                placeholder="Buscar por nombre o DNI..."
-                                value="{{ request('buscar') }}">
-                            <button class="btn btn-outline-secondary" type="submit">
-                                <i class="fas fa-search"></i>
-                            </button>
-                            @if(request('buscar'))
-                                <a href="{{ route('maestros.index') }}" class="btn btn-outline-danger" title="Limpiar búsqueda">
-                                    <i class="fas fa-times"></i>
-                                </a>
-                            @endif
-                        </div>
-                    </form>
-                </div>
+ {{-- Buscador dinámico con filtro por campo --}}
+<div class="col-md-7">
+    <form action="{{ route('maestros.index') }}" method="GET">
+        <div class="input-group">
+            
+            <!-- Selector de Criterio de Búsqueda -->
+            <select name="criterio" class="form-select text-capitalize" style="max-width: 170px;">
+                <option value="todos" {{ request('criterio') == 'todos' ? 'selected' : '' }}>Todos los campos</option>
+                <option value="nombre" {{ request('criterio') == 'nombre' ? 'selected' : '' }}>Nombre</option>
+                <option value="dni" {{ request('criterio') == 'dni' ? 'selected' : '' }}>DNI</option>
+                <option value="no_colegiado" {{ request('criterio') == 'no_colegiado' ? 'selected' : '' }}>N° Colegiado</option>
+            </select>
 
-            </div>
+            <!-- Campo de Texto -->
+            <input
+                type="text"
+                name="buscar"
+                class="form-control"
+                placeholder="Escriba aquí para buscar..."
+                value="{{ request('buscar') }}">
+
+            <!-- Botón de Búsqueda -->
+            <button class="btn btn-primary" type="submit" title="Buscar">
+                <i class="fas fa-search"></i>
+            </button>
+
+            <!-- Botón para Limpiar Búsqueda -->
+            @if(request('buscar'))
+                <a href="{{ route('maestros.index') }}" class="btn btn-outline-danger" title="Limpiar filtro">
+                    <i class="fas fa-times"></i>
+                </a>
+            @endif
+
+        </div>
+    </form>
+</div></div>
 
             <div class="table-responsive">
 

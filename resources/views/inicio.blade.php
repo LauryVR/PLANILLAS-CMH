@@ -32,7 +32,7 @@
                         <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
                             <i class="fas fa-user-md fa-2x"></i>
                         </div>
-                        <h3 class="card-title fw-bold h4 mb-2">Directorio de Maestros</h3>
+                        <h3 class="card-title fw-bold h4 mb-2">Directorio de Maestros Clientes</h3>
                         <p class="card-text text-muted mb-4">
                             Consulte, edite y actualice la información de los colegiados registrados en el sistema.
                         </p>
@@ -50,7 +50,7 @@
                         <div class="icon-shape bg-success text-white rounded-circle mb-4 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
                             <i class="fas fa-file-excel fa-2x"></i>
                         </div>
-                        <h3 class="card-title fw-bold h4 mb-2">Importación desde Excel Datos Maestros</h3>
+                        <h3 class="card-title fw-bold h4 mb-2">Importación desde Excel Datos Maestros Clientes</h3>
                         <p class="card-text text-muted mb-4">
                             Cargue archivos masivos de datos, valide la información y corrija inconsistencias antes de guardar.
                         </p>

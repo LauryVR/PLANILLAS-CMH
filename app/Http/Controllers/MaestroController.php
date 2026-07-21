@@ -9,13 +9,42 @@ use App\Models\Maestro;
 
 class MaestroController extends Controller
 {
-    public function index()
-    {
-        $maestros = Maestro::orderBy('id')
-            ->paginate(25);
+public function index(Request $request)
+{
+    $buscar = $request->get('buscar');
+    $criterio = $request->get('criterio', 'todos');
 
-        return view('maestros.index', compact('maestros'));
+    $maestros = Maestro::query();
+
+    if (!empty($buscar)) {
+        $maestros->where(function($query) use ($buscar, $criterio) {
+            switch ($criterio) {
+                case 'nombre':
+                    $query->where('nombre', 'LIKE', "%{$buscar}%");
+                    break;
+
+                case 'dni':
+                    $query->where('dni', 'LIKE', "%{$buscar}%");
+                    break;
+
+                case 'no_colegiado':
+                    $query->where('no_colegiado', 'LIKE', "%{$buscar}%");
+                    break;
+
+                default: // 'todos'
+                    $query->where('nombre', 'LIKE', "%{$buscar}%")
+                          ->orWhere('dni', 'LIKE', "%{$buscar}%")
+                          ->orWhere('no_colegiado', 'LIKE', "%{$buscar}%");
+                    break;
+            }
+        });
     }
+
+    // Paginación de 10 en 10 conservando los filtros en la URL
+    $maestros = $maestros->paginate(25)->appends($request->all());
+
+    return view('maestros.index', compact('maestros'));
+}
 
 public function update(Request $request, $id)
     {

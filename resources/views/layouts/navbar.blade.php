@@ -58,7 +58,18 @@
                 </div>
               </a>
             </li>
-
+<!-- Opción: Carga de Cuentas por Cobrar -->
+<li>
+  <a class="dropdown-item p-2 rounded-3 d-flex align-items-center dropdown-item-custom" href="{{ route('cuentas.index') }}">
+    <div class="icon-box bg-warning-light text-warning me-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
+      <i class="bi bi-receipt-cutoff fs-5"></i>
+    </div>
+    <div>
+      <div class="fw-bold text-dark">Cuentas por Cobrar (CxC)</div>
+      <small class="text-muted d-block">Importación y validación de cobros</small>
+    </div>
+  </a>
+</li>
           </ul>
         </li>
 
