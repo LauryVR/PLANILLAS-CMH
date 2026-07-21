@@ -32,9 +32,7 @@ Route::put('/maestros/{id}', [MaestroController::class, 'update'])
 
 Route::get('/excel', [ExcelController::class, 'index'])
     ->name('excel.index');
-
-Route::post('/excel/cargar', [ExcelController::class, 'cargar'])
-    ->name('excel.cargar');
-
-    Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
+Route::get('/excel/cargar', [ExcelController::class, 'index'])->name('excel.index');
+Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
+Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
 Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
