@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
-
 class CuentaController extends Controller
 {
     /**
@@ -16,6 +15,48 @@ class CuentaController extends Controller
     public function index()
     {
         return view('maestros.cuentas');
+    }
+
+    /**
+     * Busca un maestro en la BD de forma flexible para mitigar omisión de ceros por parte de Excel.
+     */
+    private function buscarMaestroFlexible(string $dni)
+    {
+        $dniClean = trim($dni);
+        if (empty($dniClean)) {
+            return null;
+        }
+
+        // 1. Búsqueda directa exacta
+        $maestro = DB::table('maestros')->where('dni', $dniClean)->first();
+        if ($maestro) {
+            return $maestro;
+        }
+
+        // 2. Si no empieza por '0', probar agregándole el '0' inicial (por si Excel lo eliminó)
+        if (!str_starts_with($dniClean, '0')) {
+            $maestro = DB::table('maestros')->where('dni', '0' . $dniClean)->first();
+            if ($maestro) {
+                return $maestro;
+            }
+        }
+
+        // 3. Búsqueda quitando guiones/espacios por si en BD están sin formato
+        $soloNumeros = preg_replace('/[^0-9]/', '', $dniClean);
+        if (!empty($soloNumeros) && $soloNumeros !== $dniClean) {
+            $maestro = DB::table('maestros')->where('dni', $soloNumeros)->first();
+            if ($maestro) {
+                return $maestro;
+            }
+            if (!str_starts_with($soloNumeros, '0')) {
+                $maestro = DB::table('maestros')->where('dni', '0' . $soloNumeros)->first();
+                if ($maestro) {
+                    return $maestro;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -29,7 +70,6 @@ class CuentaController extends Controller
 
         $file = $request->file('archivo');
 
-        // Leer archivo Excel usando PhpOffice\PhpSpreadsheet\IOFactory
         $spreadsheet = IOFactory::load($file->getRealPath());
         $worksheet   = $spreadsheet->getActiveSheet();
         $filas       = $worksheet->toArray();
@@ -48,14 +88,12 @@ class CuentaController extends Controller
                 continue;
             }
 
-            // Lectura de columnas desde el archivo Excel
             $dni           = trim($fila[0] ?? '');
             $nombre        = trim($fila[1] ?? '');
             $cuenta        = trim($fila[2] ?? '');
             $concepto      = trim($fila[3] ?? '');
             $valorConcepto = trim($fila[4] ?? '');
 
-            // Mantenemos una lista con todos los registros procesados para mostrarlos en la vista siempre
             $registroActual = [
                 'linea'          => $numLinea,
                 'dni'            => $dni,
@@ -70,17 +108,15 @@ class CuentaController extends Controller
             $mensajesError = [];
             $camposError   = [];
 
-            // -------------------------------------------------------------
-            // VALIDACIÓN ÚNICA: Verificar Identidad y Nombre en 'maestros'
-            // -------------------------------------------------------------
-            $maestro = DB::table('maestros')->where('dni', $dni)->first();
+            $maestro = $this->buscarMaestroFlexible($dni);
 
             if (!$maestro) {
-                // Error 1: La Identidad / DNI no existe en los Datos Maestros
                 $camposError[]   = 'Identidad';
                 $mensajesError[] = "La identidad/DNI '{$dni}' no se encuentra registrada en Maestros.";
             } else {
-                // Error 2: La Identidad existe, pero el nombre no coincide
+                $registroActual['dni'] = $maestro->dni;
+                $dni = $maestro->dni;
+
                 $nombreMaestro = trim($maestro->nombre ?? '');
 
                 if (strtolower($nombreMaestro) !== strtolower($nombre)) {
@@ -89,7 +125,6 @@ class CuentaController extends Controller
                 }
             }
 
-            // Si hay errores en esta fila
             if (count($mensajesError) > 0) {
                 $registroActual['tiene_error']   = true;
                 $registroActual['detalle_error'] = implode(' | ', $mensajesError);
@@ -105,10 +140,9 @@ class CuentaController extends Controller
             $todosLosDatos[] = $registroActual;
         }
 
-        // Si existen errores, enviamos la lista completa de datos + el listado de errores
         if (count($erroresExcel) > 0) {
             return back()
-                ->with('datos', $todosLosDatos) // Muestra la tabla completa en pantalla
+                ->with('datos', $todosLosDatos)
                 ->with('errores_excel', $erroresExcel)
                 ->with('error', 'Se encontraron inconsistencias en ' . count($erroresExcel) . ' fila(s). Revisa el detalle en la tabla o en el resumen de errores.');
         }
@@ -123,57 +157,78 @@ class CuentaController extends Controller
      */
     public function guardar(Request $request)
     {
-        $cuentas = $request->input('cuentas', []);
+        $cuentasRaw = $request->input('cuentas', []);
 
-        if (empty($cuentas)) {
+        if (empty($cuentasRaw)) {
             return back()->with('error', 'No hay registros para guardar.');
         }
 
-        // Re-validación final antes de insertar
         $erroresFinales = [];
+        $todosLosDatos  = [];
 
-        foreach ($cuentas as $index => $item) {
-            $numFila = $index + 1;
+        foreach ($cuentasRaw as $index => $item) {
+            // Se usa la línea enviada desde el formulario; si no existe, se calcula basándose en el índice
+            $numFila = isset($item['linea']) ? (int)$item['linea'] : ($index + 2);
             $dni     = trim($item['dni'] ?? '');
             $nombre  = trim($item['nombre'] ?? '');
 
-            $maestro = DB::table('maestros')->where('dni', $dni)->first();
+            $registroActual = [
+                'linea'          => $numFila,
+                'dni'            => $dni,
+                'nombre'         => $nombre,
+                'cuenta'         => trim($item['cuenta'] ?? ''),
+                'concepto'       => trim($item['concepto'] ?? ''),
+                'valor_concepto' => $item['valor_concepto'] ?? 0,
+                'tiene_error'    => false,
+                'detalle_error'  => ''
+            ];
+
+            $mensajesError = [];
+            $camposError   = [];
+
+            $maestro = $this->buscarMaestroFlexible($dni);
 
             if (!$maestro) {
-                $erroresFinales[] = [
-                    'linea'    => $numFila,
-                    'campos'   => 'Identidad',
-                    'valores'  => "DNI: {$dni}",
-                    'mensajes' => ["La identidad '{$dni}' no existe en Maestros."]
-                ];
-                continue;
+                $camposError[]   = 'Identidad';
+                $mensajesError[] = "La identidad '{$dni}' no existe en Maestros.";
+            } else {
+                $nombreMaestro = trim($maestro->nombre ?? '');
+                if (strtolower($nombreMaestro) !== strtolower($nombre)) {
+                    $camposError[]   = 'Nombre';
+                    $mensajesError[] = "El nombre '{$nombre}' no coincide con el registrado en Maestros ('{$nombreMaestro}').";
+                }
             }
 
-            if (strtolower(trim($maestro->nombre ?? '')) !== strtolower($nombre)) {
+            if (count($mensajesError) > 0) {
+                $registroActual['tiene_error']   = true;
+                $registroActual['detalle_error'] = implode(' | ', $mensajesError);
+
                 $erroresFinales[] = [
                     'linea'    => $numFila,
-                    'campos'   => 'Nombre',
+                    'campos'   => implode(', ', array_unique($camposError)),
                     'valores'  => "DNI: {$dni} | Nombre: {$nombre}",
-                    'mensajes' => ["El nombre '{$nombre}' no coincide con el registrado en Maestros."]
+                    'mensajes' => $mensajesError,
                 ];
             }
+
+            $todosLosDatos[] = $registroActual;
         }
 
         if (count($erroresFinales) > 0) {
             return back()
-                ->with('datos', $cuentas) // Reenvía los datos para mantener la tabla visible
+                ->with('datos', $todosLosDatos) // Mantiene la estructura uniforme con 'linea', 'tiene_error', etc.
                 ->with('errores_excel', $erroresFinales)
                 ->with('error', 'No se pudo guardar. Hay registros que no coinciden con la tabla Maestros.');
         }
 
         DB::beginTransaction();
         try {
-            foreach ($cuentas as $item) {
+            foreach ($todosLosDatos as $item) {
                 DB::table('cuentas_por_cobrar')->insert([
-                    'dni'            => trim($item['dni']),
-                    'nombre'         => trim($item['nombre']),
-                    'cuenta'         => trim($item['cuenta']),
-                    'concepto'       => trim($item['concepto']),
+                    'dni'            => $item['dni'],
+                    'nombre'         => $item['nombre'],
+                    'cuenta'         => $item['cuenta'],
+                    'concepto'       => $item['concepto'],
                     'valor_concepto' => $item['valor_concepto'],
                     'created_at'     => now(),
                     'updated_at'     => now(),
@@ -182,12 +237,12 @@ class CuentaController extends Controller
 
             DB::commit();
 
-            return redirect()->route('cuentas.index')->with('success', count($cuentas) . ' cuentas por cobrar guardadas exitosamente.');
+            return redirect()->route('cuentas.index')->with('success', count($todosLosDatos) . ' cuentas por cobrar guardadas exitosamente.');
 
         } catch (\Exception $e) {
             DB::rollBack();
             return back()
-                ->with('datos', $cuentas) // Reenvía los datos para mantener la tabla visible si falla la BD
+                ->with('datos', $todosLosDatos)
                 ->with('error', 'Error al insertar los registros en la base de datos: ' . $e->getMessage());
         }
     }

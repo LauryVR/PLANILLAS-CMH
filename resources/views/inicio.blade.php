@@ -26,12 +26,15 @@
         <div class="row g-4 justify-content-center">
 
             {{-- Opción 1: Gestión de Maestros --}}
-            <div class="col-md-6 col-lg-5">
+            <div class="col-md-6 col-lg-4">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
-                        <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-                            <i class="fas fa-user-md fa-2x"></i>
+                        
+                        {{-- Contenedor de Ícono con Sombra --}}
+                        <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                            <i class="fas fa-address-book fa-2x"></i>
                         </div>
+                        
                         <h3 class="card-title fw-bold h4 mb-2">Directorio de Maestros Clientes</h3>
                         <p class="card-text text-muted mb-4">
                             Consulte, edite y actualice la información de los colegiados registrados en el sistema.
@@ -44,12 +47,15 @@
             </div>
 
             {{-- Opción 2: Carga Masiva Excel --}}
-            <div class="col-md-6 col-lg-5">
+            <div class="col-md-6 col-lg-4">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
-                        <div class="icon-shape bg-success text-white rounded-circle mb-4 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        
+                        {{-- Contenedor de Ícono con Sombra --}}
+                        <div class="icon-shape bg-success text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
                             <i class="fas fa-file-excel fa-2x"></i>
                         </div>
+                        
                         <h3 class="card-title fw-bold h4 mb-2">Importación desde Excel Datos Maestros Clientes</h3>
                         <p class="card-text text-muted mb-4">
                             Cargue archivos masivos de datos, valide la información y corrija inconsistencias antes de guardar.
@@ -61,9 +67,30 @@
                 </div>
             </div>
 
-        </div>
+            {{-- Opción 3: Cuentas por Cobrar (Estilo Amarillo / Warning) --}}
+            <div class="col-md-6 col-lg-4">
+                <div class="card card-menu h-100 border-0 shadow-sm transition-all">
+                    <div class="card-body p-4 text-center d-flex flex-column align-items-center">
+                        
+                        {{-- Contenedor de Ícono en Amarillo --}}
+                        <div class="icon-shape bg-warning text-dark rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                            <i class="fas fa-file-invoice-dollar fa-2x"></i>
+                        </div>
+                        
+                        <h3 class="card-title fw-bold h4 mb-2">Cuentas por Cobrar (CxC)</h3>
+                        <p class="card-text text-muted mb-4">
+                            Cargue, previsualice y gestione los estados de cuenta, cargos y valores de conceptos a cobrar.
+                        </p>
+                        <a href="{{ url('/cuentas') }}" class="btn btn-warning text-dark fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                            <i class="fas fa-hand-holding-usd me-2"></i> Ir a Cuentas por Cobrar
+                        </a>
+                    </div>
+                </div>
+            </div>
 
-    </div>
+        </div> {{-- Fin .row --}}
+
+    </div> {{-- Fin .container --}}
 </section>
 @endsection
 

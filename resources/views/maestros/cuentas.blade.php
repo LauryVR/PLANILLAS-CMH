@@ -52,7 +52,8 @@
     @php
         $datos = session('datos') ?? ($datos ?? []);
     @endphp
-{{-- 2. Tabla de Resultados Editables --}}
+
+    {{-- 2. Tabla de Resultados Editables --}}
     @if(!empty($datos))
         <form id="formGuardarCuentas" action="{{ route('cuentas.guardar') }}" method="POST">
             @csrf
@@ -81,7 +82,7 @@
                         <table id="tablaCuentas" class="table table-bordered table-hover align-middle mb-0 w-100">
                             <thead class="table-success">
                                 <tr>
-                                    <th width="50" class="text-center">#</th>
+                                    <th width="50" class="text-center"># Fila</th>
                                     <th>DNI</th>
                                     <th>Nombre</th>
                                     <th>Cuenta</th>
@@ -98,16 +99,29 @@
                                         $valCuenta   = $fila['cuenta'] ?? $fila[2] ?? '';
                                         $valConcepto = $fila['concepto'] ?? $fila[3] ?? '';
                                         $valValor    = $fila['valor_concepto'] ?? $fila['valor'] ?? $fila[4] ?? '';
+                                        
+                                        // Obtener número de línea física si viene del controlador, o la clave asociativa original
+                                        $numLinea    = $fila['linea'] ?? $fila['fila_excel'] ?? ($index + 1);
+
+                                        // Limpieza básica
+                                        $dniClean = strtolower(trim($valDni));
                                     @endphp
 
-                                    {{-- Omitir si la fila viene totalmente vacía --}}
+                                    {{-- Omitir si es encabezado repetido --}}
+                                    @if($dniClean === 'dni' || strtolower(trim($valNombre)) === 'nombre')
+                                        @continue
+                                    @endif
+
+                                    {{-- Omitir si viene completamente vacía --}}
                                     @if(empty($valDni) && empty($valNombre))
                                         @continue
                                     @endif
 
                                     <tr>
                                         <td class="text-center fw-bold text-muted">
-                                            {{ $loop->iteration }}
+                                            {{ $numLinea }}
+                                            {{-- Campo hidden para mantener la referencia original del Excel en el Request --}}
+                                            <input type="hidden" name="cuentas[{{ $index }}][linea]" value="{{ $numLinea }}">
                                         </td>
                                         <td data-search="{{ $valDni }}" data-order="{{ $valDni }}">
                                             <input type="text" 
@@ -184,7 +198,7 @@
                             @foreach(session('errores_excel') as $log)
                                 <tr>
                                     <td class="text-center fw-bold">
-                                        <span class="badge bg-danger fs-6">Fila {{ $log['linea'] }}</span>
+                                        <span class="badge bg-danger fs-6">Fila {{ $log['linea'] ?? $loop->iteration }}</span>
                                     </td>
                                     <td>
                                         <span class="fw-bold text-secondary">{{ $log['campos'] ?? $log['campo'] ?? 'N/A' }}</span>
@@ -228,7 +242,6 @@
                     "pageLength": 10,
                     "lengthMenu": [10, 25, 50, 100],
                     "language": dtLanguage,
-                    // Permite a DataTables extraer los valores de los inputs para búsquedas y ordenamiento
                     "columnDefs": [
                         {
                             "targets": "_all",
@@ -239,7 +252,7 @@
                     ]
                 });
 
-                // Enviar también los inputs que no estén visibles por la paginación
+                // Incluir inputs ocultos por paginación al enviar el formulario
                 $('#formGuardarCuentas').on('submit', function(e) {
                     var form = this;
                     table.$('input').each(function() {
@@ -248,7 +261,7 @@
                                 $('<input>')
                                     .attr('type', 'hidden')
                                     .attr('name', this.name)
-                                    .val(this.value)
+                                    .attr('value', this.value)
                             );
                         }
                     });
