@@ -14,6 +14,11 @@ public function index(Request $request)
     $buscar = $request->get('buscar');
     $criterio = $request->get('criterio', 'todos');
 
+    // Validar columna y dirección para seguridad (evitar SQL Injection)
+    $columnasPermitidas = ['id', 'nombre', 'dni', 'no_colegiado'];
+    $sort = in_array($request->get('sort'), $columnasPermitidas) ? $request->get('sort') : 'id';
+    $direction = in_array(strtolower($request->get('direction')), ['asc', 'desc']) ? $request->get('direction') : 'asc';
+
     $maestros = Maestro::query();
 
     if (!empty($buscar)) {
@@ -40,8 +45,10 @@ public function index(Request $request)
         });
     }
 
-    // Paginación de 10 en 10 conservando los filtros en la URL
-    $maestros = $maestros->paginate(25)->appends($request->all());
+    // Aplicar la ordenación por la columna y dirección requerida
+    $maestros = $maestros->orderBy($sort, $direction)
+                         ->paginate(25)
+                         ->appends($request->all());
 
     return view('maestros.index', compact('maestros'));
 }

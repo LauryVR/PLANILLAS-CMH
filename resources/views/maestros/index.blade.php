@@ -27,91 +27,119 @@
 
         <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
-
                 <h3 class="mb-0 fs-4">
                     <i class="fas fa-users me-2"></i>
-                    Datos Maestros
+                    Datos Maestros Clientes
                 </h3>
 
-                {{-- Botón para abrir el modal de Excel --}}
-                <button type="button" class="btn btn-light" data-bs-toggle="modal" data-bs-target="#cargarExcelModal">
-                   <a href="{{ route('excel.index') }}" class="btn btn-light">
-    <i class="fas fa-file-excel text-success me-1"></i>
-    Cargar Excel
-</a>
-                </button>
-
+                {{-- Botón para ir al módulo Excel --}}
+                <a href="{{ route('excel.index') }}" class="btn btn-light">
+                    <i class="fas fa-file-excel text-success me-1"></i>
+                    Cargar Excel
+                </a>
             </div>
         </div>
 
         <div class="card-body">
 
             <div class="row mb-3 align-items-center">
-
-                <div class="col-md-6 mb-2 mb-md-0">
+                <div class="col-md-5 mb-2 mb-md-0">
                     <h6 class="mb-0">
                         Total de registros:
                         <span class="badge bg-primary">
                             {{ $maestros->total() }}
                         </span>
                     </h6>
-                </div></div>
+                </div>
 
- {{-- Buscador dinámico con filtro por campo --}}
-<div class="col-md-7">
-    <form action="{{ route('maestros.index') }}" method="GET">
-        <div class="input-group">
-            
-            <!-- Selector de Criterio de Búsqueda -->
-            <select name="criterio" class="form-select text-capitalize" style="max-width: 170px;">
-                <option value="todos" {{ request('criterio') == 'todos' ? 'selected' : '' }}>Todos los campos</option>
-                <option value="nombre" {{ request('criterio') == 'nombre' ? 'selected' : '' }}>Nombre</option>
-                <option value="dni" {{ request('criterio') == 'dni' ? 'selected' : '' }}>DNI</option>
-                <option value="no_colegiado" {{ request('criterio') == 'no_colegiado' ? 'selected' : '' }}>N° Colegiado</option>
-            </select>
+                {{-- Buscador dinámico con filtro por campo --}}
+                <div class="col-md-7">
+                    <form action="{{ route('maestros.index') }}" method="GET">
+                        {{-- Mantener el orden actual si el usuario busca algo nuevo --}}
+                        <input type="hidden" name="sort" value="{{ request('sort', 'id') }}">
+                        <input type="hidden" name="direction" value="{{ request('direction', 'asc') }}">
 
-            <!-- Campo de Texto -->
-            <input
-                type="text"
-                name="buscar"
-                class="form-control"
-                placeholder="Escriba aquí para buscar..."
-                value="{{ request('buscar') }}">
+                        <div class="input-group">
+                            <select name="criterio" class="form-select text-capitalize" style="max-width: 170px;">
+                                <option value="todos" {{ request('criterio') == 'todos' ? 'selected' : '' }}>Todos los campos</option>
+                                <option value="nombre" {{ request('criterio') == 'nombre' ? 'selected' : '' }}>Nombre</option>
+                                <option value="dni" {{ request('criterio') == 'dni' ? 'selected' : '' }}>DNI</option>
+                                <option value="no_colegiado" {{ request('criterio') == 'no_colegiado' ? 'selected' : '' }}>N° Colegiado</option>
+                            </select>
 
-            <!-- Botón de Búsqueda -->
-            <button class="btn btn-primary" type="submit" title="Buscar">
-                <i class="fas fa-search"></i>
-            </button>
+                            <input type="text"
+                                   name="buscar"
+                                   class="form-control"
+                                   placeholder="Escriba aquí para buscar..."
+                                   value="{{ request('buscar') }}">
 
-            <!-- Botón para Limpiar Búsqueda -->
-            @if(request('buscar'))
-                <a href="{{ route('maestros.index') }}" class="btn btn-outline-danger" title="Limpiar filtro">
-                    <i class="fas fa-times"></i>
-                </a>
-            @endif
+                            <button class="btn btn-primary" type="submit" title="Buscar">
+                                <i class="fas fa-search"></i>
+                            </button>
 
-        </div>
-    </form>
-</div></div>
+                            @if(request('buscar'))
+                                <a href="{{ route('maestros.index') }}" class="btn btn-outline-danger" title="Limpiar filtro">
+                                    <i class="fas fa-times"></i>
+                                </a>
+                            @endif
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            @php
+                // Helper para generar las URLs de ordenamiento dinámicamente
+                $currentSort = request('sort', 'id');
+                $currentDirection = request('direction', 'asc');
+
+                $getSortUrl = function($column) use ($currentSort, $currentDirection) {
+                    $newDirection = ($currentSort === $column && $currentDirection === 'asc') ? 'desc' : 'asc';
+                    return route('maestros.index', array_merge(request()->query(), [
+                        'sort' => $column,
+                        'direction' => $newDirection
+                    ]));
+                };
+
+                $getSortIcon = function($column) use ($currentSort, $currentDirection) {
+                    if ($currentSort !== $column) {
+                        return '<i class="fas fa-sort text-muted ms-1 opacity-50"></i>';
+                    }
+                    return $currentDirection === 'asc' 
+                        ? '<i class="fas fa-sort-up text-warning ms-1"></i>' 
+                        : '<i class="fas fa-sort-down text-warning ms-1"></i>';
+                };
+            @endphp
 
             <div class="table-responsive">
-
                 <table class="table table-striped table-hover table-bordered align-middle">
-
                     <thead class="table-dark">
                         <tr>
-                            <th width="80">ID</th>
-                            <th>Nombre</th>
-                            <th>DNI</th>
-                            <th>No Colegiado</th>
+                            <th width="100">
+                                <a href="{{ $getSortUrl('id') }}" class="text-white text-decoration-none d-flex justify-content-between align-items-center">
+                                    ID {!! $getSortIcon('id') !!}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ $getSortUrl('nombre') }}" class="text-white text-decoration-none d-flex justify-content-between align-items-center">
+                                    Nombre {!! $getSortIcon('nombre') !!}
+                                </a>
+                            </th>
+                            <th width="180">
+                                <a href="{{ $getSortUrl('dni') }}" class="text-white text-decoration-none d-flex justify-content-between align-items-center">
+                                    DNI {!! $getSortIcon('dni') !!}
+                                </a>
+                            </th>
+                            <th width="180">
+                                <a href="{{ $getSortUrl('no_colegiado') }}" class="text-white text-decoration-none d-flex justify-content-between align-items-center">
+                                    No. Colegiado {!! $getSortIcon('no_colegiado') !!}
+                                </a>
+                            </th>
                             <th width="120" class="text-center">Acciones</th>
                         </tr>
                     </thead>
 
                     <tbody>
-
                         @forelse($maestros as $maestro)
-
                             <tr>
                                 <td>{{ $maestro->id }}</td>
                                 <td>{{ $maestro->nombre }}</td>
@@ -119,11 +147,10 @@
                                 <td>{{ $maestro->no_colegiado }}</td>
 
                                 <td class="text-center">
-                                    <button
-                                        type="button"
-                                        class="btn btn-warning btn-sm"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editarModal{{ $maestro->id }}">
+                                    <button type="button"
+                                            class="btn btn-warning btn-sm"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editarModal{{ $maestro->id }}">
                                         <i class="fas fa-edit me-1"></i> Editar
                                     </button>
                                 </td>
@@ -133,7 +160,6 @@
                             <div class="modal fade" id="editarModal{{ $maestro->id }}" tabindex="-1" aria-labelledby="editarModalLabel{{ $maestro->id }}" aria-hidden="true">
                                 <div class="modal-dialog">
                                     <div class="modal-content">
-
                                         <form action="{{ route('maestros.update', $maestro->id) }}" method="POST">
                                             @csrf
                                             @method('PUT')
@@ -146,7 +172,6 @@
                                             </div>
 
                                             <div class="modal-body text-start">
-
                                                 <div class="mb-3">
                                                     <label for="nombre_{{ $maestro->id }}" class="form-label fw-bold">Nombre Completo</label>
                                                     <input type="text" class="form-control" id="nombre_{{ $maestro->id }}" name="nombre" value="{{ old('nombre', $maestro->nombre) }}" required>
@@ -161,49 +186,36 @@
                                                     <label for="no_colegiado_{{ $maestro->id }}" class="form-label fw-bold">No. Colegiado</label>
                                                     <input type="text" class="form-control" id="no_colegiado_{{ $maestro->id }}" name="no_colegiado" value="{{ old('no_colegiado', $maestro->no_colegiado) }}">
                                                 </div>
-
                                             </div>
 
                                             <div class="modal-footer">
                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                                                 <button type="submit" class="btn btn-warning">Guardar Cambios</button>
                                             </div>
-
                                         </form>
-
                                     </div>
                                 </div>
                             </div>
-
                         @empty
-
                             <tr>
                                 <td colspan="5" class="text-center py-4 text-muted">
                                     <i class="fas fa-info-circle me-1"></i> No se encontraron registros.
                                 </td>
                             </tr>
-
                         @endforelse
-
                     </tbody>
-
                 </table>
-
             </div>
 
             @if($maestros->hasPages())
                 <div class="d-flex justify-content-center mt-4">
-                    {{ $maestros->withQueryString()->links() }}
+                    {{ $maestros->appends(request()->query())->links() }}
                 </div>
             @endif
 
         </div>
-
     </div>
-
 </div>
-
-
 
 <!-- Incluir biblioteca SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

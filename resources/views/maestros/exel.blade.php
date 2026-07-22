@@ -55,7 +55,7 @@
 
     {{-- 2. Tabla de Resultados Editables --}}
     @if(!empty($datos))
-        <form action="{{ route('excel.guardar') }}" method="POST">
+        <form id="formGuardarMaestros" action="{{ route('excel.guardar') }}" method="POST">
             @csrf
             <div class="card shadow-sm border-0 mb-4">
                 <div class="card-header bg-light d-flex justify-content-between align-items-center">
@@ -203,10 +203,30 @@
             };
 
             if ($('#tablaExcel').length) {
-                $('#tablaExcel').DataTable({
+                // Guardamos la instancia de la tabla
+                var table = $('#tablaExcel').DataTable({
                     "pageLength": 10,
                     "lengthMenu": [10, 25, 50, 100],
                     "language": dtLanguage
+                });
+
+                // Capturamos el evento de envío del formulario
+                $('#formGuardarMaestros').on('submit', function(e) {
+                    var form = this;
+
+                    // Iteramos por TODOS los inputs registrados en DataTables (incluso de páginas ocultas)
+                    table.$('input').each(function() {
+                        // Si el input no está presente físicamente en el DOM activo
+                        if (!$.contains(document, this)) {
+                            // Se crea temporalmente como un input hidden para enviarse en el request
+                            $(form).append(
+                                $('<input>')
+                                    .attr('type', 'hidden')
+                                    .attr('name', this.name)
+                                    .attr('value', this.value)
+                            );
+                        }
+                    });
                 });
             }
 
