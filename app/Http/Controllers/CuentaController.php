@@ -1,12 +1,12 @@
 <?php 
-
-
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
 class CuentaController extends Controller
 {
     /**
@@ -33,7 +33,7 @@ class CuentaController extends Controller
             return $maestro;
         }
 
-        // 2. Si no empieza por '0', probar agregándole el '0' inicial (por si Excel lo eliminó)
+        // 2. Si no empieza por '0', probar agregándole el '0' inicial
         if (!str_starts_with($dniClean, '0')) {
             $maestro = DB::table('maestros')->where('dni', '0' . $dniClean)->first();
             if ($maestro) {
@@ -41,7 +41,7 @@ class CuentaController extends Controller
             }
         }
 
-        // 3. Búsqueda quitando guiones/espacios por si en BD están sin formato
+        // 3. Búsqueda quitando guiones/espacios
         $soloNumeros = preg_replace('/[^0-9]/', '', $dniClean);
         if (!empty($soloNumeros) && $soloNumeros !== $dniClean) {
             $maestro = DB::table('maestros')->where('dni', $soloNumeros)->first();
@@ -95,14 +95,15 @@ class CuentaController extends Controller
             $valorConcepto = trim($fila[4] ?? '');
 
             $registroActual = [
-                'linea'          => $numLinea,
-                'dni'            => $dni,
-                'nombre'         => $nombre,
-                'cuenta'         => $cuenta,
-                'concepto'       => $concepto,
+                'linea'        => $numLinea,
+                'no_colegiado' => 'N/A', // Campo por defecto si no se halla
+                'dni'          => $dni,
+                'nombre'       => $nombre,
+                'cuenta'       => $cuenta,
+                'concepto'     => $concepto,
                 'valor_concepto' => $valorConcepto,
-                'tiene_error'    => false,
-                'detalle_error'  => ''
+                'tiene_error'  => false,
+                'detalle_error' => ''
             ];
 
             $mensajesError = [];
@@ -114,8 +115,9 @@ class CuentaController extends Controller
                 $camposError[]   = 'Identidad';
                 $mensajesError[] = "La identidad/DNI '{$dni}' no se encuentra registrada en Maestros.";
             } else {
-                $registroActual['dni'] = $maestro->dni;
-                $dni = $maestro->dni;
+                $registroActual['dni']          = $maestro->dni;
+                $registroActual['no_colegiado'] = $maestro->no_colegiado ?? 'N/A'; // <--- Se asigna no_colegiado
+                $dni                            = $maestro->dni;
 
                 $nombreMaestro = trim($maestro->nombre ?? '');
 
@@ -167,20 +169,20 @@ class CuentaController extends Controller
         $todosLosDatos  = [];
 
         foreach ($cuentasRaw as $index => $item) {
-            // Se usa la línea enviada desde el formulario; si no existe, se calcula basándose en el índice
             $numFila = isset($item['linea']) ? (int)$item['linea'] : ($index + 2);
             $dni     = trim($item['dni'] ?? '');
             $nombre  = trim($item['nombre'] ?? '');
 
             $registroActual = [
-                'linea'          => $numFila,
-                'dni'            => $dni,
-                'nombre'         => $nombre,
-                'cuenta'         => trim($item['cuenta'] ?? ''),
-                'concepto'       => trim($item['concepto'] ?? ''),
+                'linea'        => $numFila,
+                'no_colegiado' => trim($item['no_colegiado'] ?? 'N/A'),
+                'dni'          => $dni,
+                'nombre'       => $nombre,
+                'cuenta'       => trim($item['cuenta'] ?? ''),
+                'concepto'     => trim($item['concepto'] ?? ''),
                 'valor_concepto' => $item['valor_concepto'] ?? 0,
-                'tiene_error'    => false,
-                'detalle_error'  => ''
+                'tiene_error'  => false,
+                'detalle_error' => ''
             ];
 
             $mensajesError = [];
@@ -192,7 +194,9 @@ class CuentaController extends Controller
                 $camposError[]   = 'Identidad';
                 $mensajesError[] = "La identidad '{$dni}' no existe en Maestros.";
             } else {
-                $nombreMaestro = trim($maestro->nombre ?? '');
+                $nombreMaestro                  = trim($maestro->nombre ?? '');
+                $registroActual['no_colegiado'] = $maestro->no_colegiado ?? 'N/A';
+
                 if (strtolower($nombreMaestro) !== strtolower($nombre)) {
                     $camposError[]   = 'Nombre';
                     $mensajesError[] = "El nombre '{$nombre}' no coincide con el registrado en Maestros ('{$nombreMaestro}').";
@@ -216,7 +220,7 @@ class CuentaController extends Controller
 
         if (count($erroresFinales) > 0) {
             return back()
-                ->with('datos', $todosLosDatos) // Mantiene la estructura uniforme con 'linea', 'tiene_error', etc.
+                ->with('datos', $todosLosDatos)
                 ->with('errores_excel', $erroresFinales)
                 ->with('error', 'No se pudo guardar. Hay registros que no coinciden con la tabla Maestros.');
         }
@@ -245,5 +249,50 @@ class CuentaController extends Controller
                 ->with('datos', $todosLosDatos)
                 ->with('error', 'Error al insertar los registros en la base de datos: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Exporta los datos validados actualmente a un archivo Excel.
+     */
+    public function exportarExcel(Request $request)
+    {
+        $cuentasRaw = $request->input('cuentas', []);
+
+        if (empty($cuentasRaw)) {
+            return back()->with('error', 'No hay datos cargados para exportar.');
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        // Encabezados
+        $headers = ['Línea Excel', 'N° Colegiado', 'DNI', 'Nombre', 'Cuenta', 'Concepto', 'Valor Concepto'];
+        $sheet->fromArray($headers, NULL, 'A1');
+
+        // Estilo de encabezado
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+
+        // Generar filas
+        $fila = 2;
+        foreach ($cuentasRaw as $item) {
+            $sheet->setCellValue("A{$fila}", $item['linea'] ?? '');
+            $sheet->setCellValue("B{$fila}", $item['no_colegiado'] ?? 'N/A');
+            $sheet->setCellValue("C{$fila}", $item['dni'] ?? '');
+            $sheet->setCellValue("D{$fila}", $item['nombre'] ?? '');
+            $sheet->setCellValue("E{$fila}", $item['cuenta'] ?? '');
+            $sheet->setCellValue("F{$fila}", $item['concepto'] ?? '');
+            $sheet->setCellValue("G{$fila}", $item['valor_concepto'] ?? 0);
+            $fila++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'Cuentas_Previsualizacion_' . date('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function() use ($writer) {
+            $writer->save('php://output');
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0',
+        ]);
     }
 }

@@ -44,3 +44,5 @@ Route::post('/cuentas/cargar', [CuentaController::class, 'cargarExcel'])->name('
 
 // Ruta POST para guardar los datos finales en la base de datos
 Route::post('/cuentas/guardar', [CuentaController::class, 'guardar'])->name('cuentas.guardar');
+
+Route::post('/cuentas/exportar', [CuentaController::class, 'exportarExcel'])->name('cuentas.exportar');
