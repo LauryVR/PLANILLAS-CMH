@@ -30,7 +30,6 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/admin/usuarios/{id}/role', [UserController::class, 'updateRole'])->name('admin.users.role');
     Route::patch('/admin/usuarios/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
     Route::delete('/admin/usuarios/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
-    Route::patch('/admin/users/{user}/role', [UserController::class, 'updateRole'])->name('admin.users.role');
 
     // --- Perfil de Usuario ---
     Route::get('/perfil/cambiar-password', [UserController::class, 'editPassword'])->name('password.change.edit');
@@ -55,5 +54,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/cuentas/cargar', [CuentaController::class, 'cargarExcel'])->name('cuentas.cargar');
     Route::post('/cuentas/guardar', [CuentaController::class, 'guardar'])->name('cuentas.guardar');
     Route::post('/cuentas/exportar', [CuentaController::class, 'exportarExcel'])->name('cuentas.exportar');
-
+    
+    // ✅ CORREGIDO (CuentaController en singular):
+    Route::post('/cuentas/verificar-dni', [CuentaController::class, 'verificarDniAjax'])->name('cuentas.verificar-dni');
 });
