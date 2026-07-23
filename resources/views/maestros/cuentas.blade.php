@@ -540,7 +540,7 @@
         Swal.fire({
             icon: 'error',
             title: 'Inconsistencias Detectadas',
-            text: 'Aún hay ' + erroresEncontrados + ' registro(s) cuyos números de DNI no coinciden con Maestros. Revisa la consola del navegador (F12).',
+            text: 'Aún hay ' + erroresEncontrados + ' registro(s) cuyos números de DNI no coinciden con Datos Maestros.',
             confirmButtonColor: '#dc3545'
         });
     }
