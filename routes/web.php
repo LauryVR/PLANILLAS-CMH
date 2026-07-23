@@ -1,48 +1,59 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\MaestroController;
+use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\CuentaController;
-/*
-|--------------------------------------------------------------------------
-| Web Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
-|
-*/
+use App\Http\Controllers\Admin\UserController;
 
+// Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
-    return view('inicio');
+    return redirect()->route('login');
 });
 
+// Rutas generadas por Breeze (Login, Register, Logout, etc.)
+require __DIR__.'/auth.php';
 
+// =========================================================================
+// RUTAS PROTEGEDAS (Solo accesibles si el usuario inició sesión)
+// =========================================================================
+Route::middleware(['auth'])->group(function () {
 
-Route::get('/maestros', [MaestroController::class, 'index'])
-    ->name('maestros.index');
-
-Route::put('/maestros/{id}', [MaestroController::class, 'update'])
-    ->name('maestros.update');
-
-
+    // --- Módulo Gestión de Usuarios ---
+    Route::get('/admin/usuarios', [UserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/usuarios/crear', [UserController::class, 'create'])->name('admin.users.create');
+    Route::post('/admin/usuarios/crear', [UserController::class, 'store'])->name('admin.users.store');
     
+    // Edición, Contraseña, Rol, Estado y Borrado
+    Route::put('/admin/usuarios/{id}', [UserController::class, 'update'])->name('admin.users.update');
+    Route::put('/admin/usuarios/{id}/password', [UserController::class, 'updatePassword'])->name('admin.users.password');
+    Route::patch('/admin/usuarios/{id}/role', [UserController::class, 'updateRole'])->name('admin.users.role');
+    Route::patch('/admin/usuarios/{id}/toggle-status', [UserController::class, 'toggleStatus'])->name('admin.users.toggle-status');
+    Route::delete('/admin/usuarios/{id}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+    Route::patch('/admin/users/{user}/role', [UserController::class, 'updateRole'])->name('admin.users.role');
 
-Route::get('/excel', [ExcelController::class, 'index'])
-    ->name('excel.index');
-Route::get('/excel/cargar', [ExcelController::class, 'index'])->name('excel.index');
-Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
-Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
-Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
-// Ruta para ver la vista principal / subir Excel
-Route::get('/cuentas', [CuentaController::class, 'index'])->name('cuentas.index');
+    // --- Perfil de Usuario ---
+    Route::get('/perfil/cambiar-password', [UserController::class, 'editPassword'])->name('password.change.edit');
+    Route::put('/perfil/cambiar-password', [UserController::class, 'updateOwnPassword'])->name('password.change.update');
 
-// Ruta POST para procesar el Excel cargado (NOMBRES OBLIGATORIOS)
-Route::post('/cuentas/cargar', [CuentaController::class, 'cargarExcel'])->name('cuentas.cargar');
+    // --- Inicio ---
+    Route::get('/inicio', function () {
+        return view('inicio');
+    })->name('inicio');
 
-// Ruta POST para guardar los datos finales en la base de datos
-Route::post('/cuentas/guardar', [CuentaController::class, 'guardar'])->name('cuentas.guardar');
+    // --- Módulo Maestros ---
+    Route::get('/maestros', [MaestroController::class, 'index'])->name('maestros.index');
+    Route::put('/maestros/{id}', [MaestroController::class, 'update'])->name('maestros.update');
 
-Route::post('/cuentas/exportar', [CuentaController::class, 'exportarExcel'])->name('cuentas.exportar');
+    // --- Módulo Excel ---
+    Route::get('/excel', [ExcelController::class, 'index'])->name('excel.index');
+    Route::post('/excel/cargar', [ExcelController::class, 'cargar'])->name('excel.cargar');
+    Route::post('/excel/guardar', [ExcelController::class, 'guardarBD'])->name('excel.guardar');
+
+    // --- Módulo Cuentas ---
+    Route::get('/cuentas', [CuentaController::class, 'index'])->name('cuentas.index');
+    Route::post('/cuentas/cargar', [CuentaController::class, 'cargarExcel'])->name('cuentas.cargar');
+    Route::post('/cuentas/guardar', [CuentaController::class, 'guardar'])->name('cuentas.guardar');
+    Route::post('/cuentas/exportar', [CuentaController::class, 'exportarExcel'])->name('cuentas.exportar');
+
+});

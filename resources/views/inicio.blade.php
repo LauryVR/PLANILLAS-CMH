@@ -1,8 +1,9 @@
+
 @extends('layouts.template')
 
 @push('head')
     <title>Inicio - Portal Colegio Médico</title>
-    <meta name="description" content="Módulo de gestión de maestros y carga masiva de archivos Excel." />
+    <meta name="description" content="Módulo de gestión de maestros, cuentas por cobrar y administración de usuarios." />
     <meta property="og:title" content="Portal de Gestión - Colegio Médico"/>
     <meta property="og:type" content="website" />
 @endpush
@@ -26,17 +27,16 @@
         <div class="row g-4 justify-content-center">
 
             {{-- Opción 1: Gestión de Maestros --}}
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-3">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
-                        {{-- Contenedor de Ícono con Sombra --}}
                         <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
                             <i class="fas fa-address-book fa-2x"></i>
                         </div>
                         
-                        <h3 class="card-title fw-bold h4 mb-2">Directorio de Maestros Clientes</h3>
-                        <p class="card-text text-muted mb-4">
+                        <h3 class="card-title fw-bold h5 mb-2">Directorio de Maestros</h3>
+                        <p class="card-text text-muted mb-4 small">
                             Consulte, edite y actualice la información de los colegiados registrados en el sistema.
                         </p>
                         <a href="{{ route('maestros.index') }}" class="btn btn-primary btn-lg w-100 mt-auto rounded-pill shadow-sm">
@@ -47,18 +47,17 @@
             </div>
 
             {{-- Opción 2: Carga Masiva Excel --}}
-            <div class="col-md-6 col-lg-4">
+            <div class="col-md-6 col-lg-3">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
-                        {{-- Contenedor de Ícono con Sombra --}}
                         <div class="icon-shape bg-success text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
                             <i class="fas fa-file-excel fa-2x"></i>
                         </div>
                         
-                        <h3 class="card-title fw-bold h4 mb-2">Importación desde Excel Datos Maestros Clientes</h3>
-                        <p class="card-text text-muted mb-4">
-                            Cargue archivos masivos de datos, valide la información y corrija inconsistencias antes de guardar.
+                        <h3 class="card-title fw-bold h5 mb-2">Importación Excel Maestros</h3>
+                        <p class="card-text text-muted mb-4 small">
+                            Cargue archivos masivos de datos, valide la información y corrija inconsistencias.
                         </p>
                         <a href="{{ route('excel.index') }}" class="btn btn-success btn-lg w-100 mt-auto rounded-pill shadow-sm">
                             <i class="fas fa-upload me-2"></i> Cargar Archivo
@@ -67,27 +66,48 @@
                 </div>
             </div>
 
-            {{-- Opción 3: Cuentas por Cobrar (Estilo Amarillo / Warning) --}}
-            <div class="col-md-6 col-lg-4">
+            {{-- Opción 3: Cuentas por Cobrar (CxC) --}}
+            <div class="col-md-6 col-lg-3">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
-                        {{-- Contenedor de Ícono en Amarillo --}}
                         <div class="icon-shape bg-warning text-dark rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
                             <i class="fas fa-file-invoice-dollar fa-2x"></i>
                         </div>
                         
-                        <h3 class="card-title fw-bold h4 mb-2">Cuentas por Cobrar (CxC)</h3>
-                        <p class="card-text text-muted mb-4">
-                            Cargue, previsualice y gestione los estados de cuenta, cargos y valores de conceptos a cobrar.
+                        <h3 class="card-title fw-bold h5 mb-2">Cuentas por Cobrar (CxC)</h3>
+                        <p class="card-text text-muted mb-4 small">
+                            Consulte y gestione los estados de cuenta, cargos y valores a cobrar por colegiado.
                         </p>
                         <a href="{{ url('/cuentas') }}" class="btn btn-warning text-dark fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
-                            <i class="fas fa-hand-holding-usd me-2"></i> Ir a Cuentas por Cobrar
+                            <i class="fas fa-hand-holding-usd me-2"></i> Ir a CxC
                         </a>
                     </div>
                 </div>
             </div>
 
+           {{-- Opción 4: Gestión de Usuarios / Administración --}}
+<div class="col-md-6 col-lg-3">
+    <div class="card card-menu h-100 border-0 shadow-sm transition-all">
+        <div class="card-body p-4 text-center d-flex flex-column align-items-center">
+            
+            <div class="icon-shape bg-purple text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                <i class="fas fa-users-cog fa-2x"></i>
+            </div>
+            
+            <h3 class="card-title fw-bold h5 mb-2">Administración de Usuarios</h3>
+            <p class="card-text text-muted mb-4 small">
+                Gestione cuentas de usuario, asignación de roles, permisos del sistema y accesos.
+            </p>
+            
+            {{-- AQUÍ ESTÁ EL CAMBIO: --}}
+            <a href="{{ route('admin.users.index') }}" class="btn btn-purple text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                <i class="fas fa-user-shield me-2"></i> Gestionar Usuarios
+            </a>
+
+        </div>
+    </div>
+</div>
         </div> {{-- Fin .row --}}
 
     </div> {{-- Fin .container --}}
@@ -96,7 +116,23 @@
 
 @push('styles')
 <style>
-    /* Efecto de elevación interactivo al pasar el cursor */
+    /* Estilos personalizados para el módulo de Administración (Púrpura) */
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+
+    .btn-purple {
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+    }
+
+    .btn-purple:hover, .btn-purple:focus {
+        background-color: #59319d;
+        border-color: #59319d;
+        color: #fff;
+    }
+
+    /* Efectos hover interactivos de las tarjetas */
     .card-menu {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         border-radius: 1rem;
