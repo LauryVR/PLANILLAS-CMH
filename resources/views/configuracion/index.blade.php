@@ -77,7 +77,8 @@
                         Modifique y establezca el orden de jerarquía y prioridad en la deducción de cuentas.
                     </p>
                     
-                    <a href="{{ route('configuracion.prioridades.index') }}" class="btn btn-warning text-dark fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                    {{-- ✅ Comilla corregida aquí: --}}
+                    <a href="{{ route('configuracion.prioridades-cuentas.index') }}" class="btn btn-warning text-dark fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
                         <i class="fas fa-sliders-h me-2"></i> Configurar Prioridades
                     </a>
                 </div>
@@ -100,7 +101,6 @@
 
 @push('styles')
 <style>
-    /* Efectos interactivos al pasar el mouse por las tarjetas */
     .card-menu {
         transition: transform 0.3s ease, box-shadow 0.3s ease;
         border-radius: 1rem;

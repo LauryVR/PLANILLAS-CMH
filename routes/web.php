@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\TipoCuentaController;
 use App\Http\Controllers\EnteRetencionController;
+use App\Http\Controllers\PrioridadCuentaController;
 
 // Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
@@ -79,7 +80,15 @@ Route::prefix('configuracion/entes-retencion')->name('configuracion.entes-retenc
     Route::patch('/{id}/toggle', [EnteRetencionController::class, 'toggleState'])->name('toggle');
 });
 
-Route::get('/configuracion/prioridades', function () {
-    return "Vista en construcción: Prioridad de Cuentas";
-})->name('configuracion.prioridades.index');
+// Cambia esto:
+Route::prefix('configuracion/prioridades-cuentas')->name('configuracion.prioridades-cuentas.')->group(function () {
+    Route::get('/', [PrioridadCuentaController::class, 'index'])->name('index');
+    Route::post('/', [PrioridadCuentaController::class, 'store'])->name('store');
+    
+    // Ruta para guardar el nuevo orden
+    Route::put('/reordenar', [PrioridadCuentaController::class, 'reordenar'])->name('reordenar');
+
+    Route::put('/{id}', [PrioridadCuentaController::class, 'update'])->name('update');
+    Route::patch('/{id}/toggle', [PrioridadCuentaController::class, 'toggleState'])->name('toggle');
+});
 });
