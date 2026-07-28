@@ -1,16 +1,15 @@
-
 @extends('layouts.template')
 
 @push('head')
     <title>Inicio - Portal Colegio Médico</title>
-    <meta name="description" content="Módulo de gestión de maestros, cuentas por cobrar y administración de usuarios." />
+    <meta name="description" content="Módulo de gestión de maestros, cuentas por cobrar, configuración y administración de usuarios." />
     <meta property="og:title" content="Portal de Gestión - Colegio Médico"/>
     <meta property="og:type" content="website" />
 @endpush
 
 @section('content')
 <section class="bienvenidos py-5">
-    <div class="container">
+    <div class="container-fluid px-4">
         
         {{-- Encabezado --}}
         <div class="row text-center mb-5">
@@ -27,7 +26,7 @@
         <div class="row g-4 justify-content-center">
 
             {{-- Opción 1: Gestión de Maestros --}}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-4 col-xl">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
@@ -47,7 +46,7 @@
             </div>
 
             {{-- Opción 2: Carga Masiva Excel --}}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-4 col-xl">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
@@ -67,7 +66,7 @@
             </div>
 
             {{-- Opción 3: Cuentas por Cobrar (CxC) --}}
-            <div class="col-md-6 col-lg-3">
+            <div class="col-md-6 col-lg-4 col-xl">
                 <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                     <div class="card-body p-4 text-center d-flex flex-column align-items-center">
                         
@@ -86,31 +85,52 @@
                 </div>
             </div>
 
-           {{-- Opción 4: Gestión de Usuarios / Administración --}}
-<div class="col-md-6 col-lg-3">
+            {{-- Opción 4: Gestión de Usuarios / Administración --}}
+            <div class="col-md-6 col-lg-4 col-xl">
+                <div class="card card-menu h-100 border-0 shadow-sm transition-all">
+                    <div class="card-body p-4 text-center d-flex flex-column align-items-center">
+                        
+                        <div class="icon-shape bg-purple text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                            <i class="fas fa-users-cog fa-2x"></i>
+                        </div>
+                        
+                        <h3 class="card-title fw-bold h5 mb-2">Administración de Usuarios</h3>
+                        <p class="card-text text-muted mb-4 small">
+                            Gestione cuentas de usuario, asignación de roles, permisos del sistema y accesos.
+                        </p>
+                        <a href="{{ route('admin.users.index') }}" class="btn btn-purple text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                            <i class="fas fa-user-shield me-2"></i> Gestionar Usuarios
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            
+{{-- Card: Configuración del Sistema --}}
+<div class="col-md-6 col-lg-4 col-xl">
     <div class="card card-menu h-100 border-0 shadow-sm transition-all">
         <div class="card-body p-4 text-center d-flex flex-column align-items-center">
             
-            <div class="icon-shape bg-purple text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
-                <i class="fas fa-users-cog fa-2x"></i>
+            <div class="icon-shape bg-dark text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                <i class="fas fa-cogs fa-2x"></i>
             </div>
             
-            <h3 class="card-title fw-bold h5 mb-2">Administración de Usuarios</h3>
+            <h3 class="card-title fw-bold h5 mb-2">Configuración del Sistema</h3>
             <p class="card-text text-muted mb-4 small">
-                Gestione cuentas de usuario, asignación de roles, permisos del sistema y accesos.
+                Ajuste los parámetros generales, preferencias globales y estados del portal.
             </p>
             
-            {{-- AQUÍ ESTÁ EL CAMBIO: --}}
-            <a href="{{ route('admin.users.index') }}" class="btn btn-purple text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
-                <i class="fas fa-user-shield me-2"></i> Gestionar Usuarios
+            <a href="{{ route('configuracion.index') }}" class="btn btn-dark text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                <i class="fas fa-sliders-h me-2"></i> Configuración
             </a>
-
+            
         </div>
     </div>
 </div>
+
         </div> {{-- Fin .row --}}
 
-    </div> {{-- Fin .container --}}
+    </div> {{-- Fin .container-fluid --}}
 </section>
 @endsection
 

@@ -5,7 +5,7 @@ use App\Http\Controllers\MaestroController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\CuentaController;
 use App\Http\Controllers\Admin\UserController;
-
+use App\Http\Controllers\ConfiguracionController;
 // Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
     return redirect()->route('login');
@@ -57,4 +57,20 @@ Route::middleware(['auth'])->group(function () {
     
     // ✅ CORREGIDO (CuentaController en singular):
     Route::post('/cuentas/verificar-dni', [CuentaController::class, 'verificarDniAjax'])->name('cuentas.verificar-dni');
+
+
+ // --- Módulo Configuracion---
+    Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
+    // Rutas secundarias para las tarjetas
+Route::get('/configuracion/tipos-cuenta', function () {
+    return "Vista en construcción: Tipos de Cuenta";
+})->name('configuracion.tipos-cuenta.index');
+
+Route::get('/configuracion/entes-retencion', function () {
+    return "Vista en construcción: Entes de Retención";
+})->name('configuracion.entes-retencion.index');
+
+Route::get('/configuracion/prioridades', function () {
+    return "Vista en construcción: Prioridad de Cuentas";
+})->name('configuracion.prioridades.index');
 });

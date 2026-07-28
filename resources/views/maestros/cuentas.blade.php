@@ -318,8 +318,7 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/colreorder/1.7.0/js/dataTables.colReorder.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
+<script>
         var table = null;
         var tableErrores = null;
 
@@ -418,132 +417,226 @@
                 $('#btnVerificar').addClass('d-none');
                 $('#btnBloqueado').addClass('d-none');
                 $('#btnGuardar').removeClass('d-none');
+            } else {
+                $('#cardReporteErrores').fadeIn(400);
             }
         }
 
         /**
          * Lógica asíncrona para extraer el DNI, validar contra el servidor y reflejar en la UI
          */
-       async function verificarCorrecciones() {
-    console.clear();
-    console.log("🔍 === INICIANDO VERIFICACIÓN DE DNI EN LÍNEA ===");
+        async function verificarCorrecciones() {
+            console.clear();
+            console.log("🔍 === INICIANDO VERIFICACIÓN DE DNI EN LÍNEA ===");
 
-    Swal.fire({
-        title: 'Verificando identidades...',
-        text: 'Consultando la base de datos de Maestros...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-    });
+            Swal.fire({
+                title: 'Verificando identidades...',
+                text: 'Consultando la base de datos de Maestros...',
+                allowOutsideClick: false,
+                didOpen: () => { Swal.showLoading(); }
+            });
 
-    let promesas = [];
-    let erroresEncontrados = 0;
+            let promesas = [];
+            let erroresEncontrados = 0;
 
-    var filas = table ? table.rows().nodes() : $('table tbody tr');
+            var filas = table ? table.rows().nodes() : $('table tbody tr');
 
-    $(filas).each(function(index) {
-        let $fila = $(this);
-        let $inputDni = $fila.find('.input-dni');
-        let dniTexto = $inputDni.length ? $inputDni.val() : '';
-        let numLinea = $fila.data('fila-excel');
+            $(filas).each(function(index) {
+                let $fila = $(this);
+                let $inputDni = $fila.find('.input-dni');
+                let dniTexto = $inputDni.length ? $inputDni.val() : '';
+                let nombreTexto = $fila.find('.input-nombre').val() || '';
+                
+                // Número de línea
+                let numLinea = $fila.data('fila-excel') || $fila.data('linea') || (index + 1);
+                let dniLimpio = String(dniTexto).trim();
 
-        // Limpiar únicamente espacios extras
-        let dniLimpio = String(dniTexto).trim();
+                console.log(`📤 [Fila ${numLinea}] Enviando DNI a verificar: "${dniLimpio}"`);
 
-        console.log(`📤 [Fila ${numLinea || index + 1}] Enviando DNI a verificar: "${dniLimpio}"`);
-
-        if (!dniLimpio) {
-            console.warn(`⚠️ [Fila ${numLinea || index + 1}] El DNI está vacío.`);
-            $inputDni.addClass('is-invalid');
-            erroresEncontrados++;
-            return;
-        }
-
-        // Creamos una promesa envuelta para garantizar que Promise.all espere la resolución de todas
-        let peticion = new Promise((resolve) => {
-            $.ajax({
-                url: "{{ route('cuentas.verificar-dni') }}",
-                type: "POST",
-                data: {
-                    _token: "{{ csrf_token() }}",
-                    dni: dniLimpio
-                }
-            }).done(function(res) {
-                console.log(`📥 [Fila ${numLinea || index + 1}] Respuesta del Servidor:`, res);
-
-                // ✅ ACEPTA 'success: true' O 'valido: true'
-                let esValido = (res.success === true || res.valido === true || res === true);
-
-                if (esValido) {
-                    console.log(`✅ [Fila ${numLinea || index + 1}] DNI válido.`);
-                    
-                    // Actualiza input DNI con respuesta o mantén el limpio
-                    $inputDni.val(res.dni_real || res.dni || dniLimpio);
-                    $inputDni.removeClass('is-invalid').addClass('is-valid');
-
-                    if (res.nombre_real) {
-                        $fila.find('.input-nombre').val(res.nombre_real);
-                    }
-                    if (res.no_colegiado) {
-                        $fila.find('.span-colegiado').html('<i class="fas fa-id-badge me-1"></i>' + res.no_colegiado);
-                        $fila.find('input[name*="no_colegiado"]').val(res.no_colegiado);
-                    }
-
-                    if (typeof tableErrores !== 'undefined' && tableErrores && numLinea) {
-                        let $trError = $('#error-fila-' + numLinea);
-                        if ($trError.length) {
-                            tableErrores.row($trError).remove().draw(false);
-                            if (typeof actualizarEstadoErrores === 'function') {
-                                actualizarEstadoErrores();
-                            }
-                        }
-                    }
-                } else {
-                    console.error(`❌ [Fila ${numLinea || index + 1}] Inconsistencia:`, {
-                        dniEnviado: dniLimpio,
-                        respuestaBackend: res
-                    });
+                // Caso: DNI Vacío
+                if (!dniLimpio) {
+                    console.warn(`⚠️ [Fila ${numLinea}] El DNI está vacío.`);
                     $inputDni.removeClass('is-valid').addClass('is-invalid');
                     erroresEncontrados++;
+
+                    // Actualizar o crear fila en la tabla de errores
+                    actualizarFilaTablaErrores(numLinea, dniLimpio, nombreTexto, "El campo DNI no puede estar vacío.");
+                    return;
                 }
-                resolve();
-            }).fail(function(err) {
-                console.error(`💥 [Fila ${numLinea || index + 1}] Error HTTP/Servidor (${err.status}):`, err.responseJSON || err.responseText);
-                $inputDni.removeClass('is-valid').addClass('is-invalid');
-                erroresEncontrados++;
-                resolve();
+
+                let peticion = new Promise((resolve) => {
+                    $.ajax({
+                        url: "{{ route('cuentas.verificar-dni') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            dni: dniLimpio
+                        }
+                    }).done(function(res) {
+                        console.log(`📥 [Fila ${numLinea}] Respuesta del Servidor:`, res);
+
+                        let esValido = (res.success === true || res.valido === true || res === true);
+
+                        if (esValido) {
+                            console.log(`✅ [Fila ${numLinea}] DNI válido.`);
+                            
+                            $inputDni.val(res.dni_real || res.dni || dniLimpio);
+                            $inputDni.removeClass('is-invalid').addClass('is-valid');
+
+                            if (res.nombre_real) {
+                                $fila.find('.input-nombre').val(res.nombre_real);
+                            }
+                            if (res.no_colegiado) {
+                                $fila.find('.span-colegiado').html('<i class="fas fa-id-badge me-1"></i>' + res.no_colegiado);
+                                $fila.find('input[name*="no_colegiado"]').val(res.no_colegiado);
+                            }
+
+                            // 1. SI ES VÁLIDO: REMOVER DE LA TABLA DE ERRORES
+                            removerFilaTablaErrores(numLinea);
+
+                        } else {
+                            console.error(`❌ [Fila ${numLinea}] Inconsistencia detectada.`);
+                            $inputDni.removeClass('is-valid').addClass('is-invalid');
+                            erroresEncontrados++;
+
+                            // 2. SI SIGUE CON ERROR: ACTUALIZAR O INSERTAR EN LA TABLA DE ERRORES
+                            let mensajeError = res.mensaje || `La identidad/DNI '${dniLimpio}' no se encuentra registrada en Maestros.`;
+                            actualizarFilaTablaErrores(numLinea, dniLimpio, nombreTexto, mensajeError);
+                        }
+                        resolve();
+                    }).fail(function(err) {
+                        console.error(`💥 [Fila ${numLinea}] Error HTTP/Servidor (${err.status})`);
+                        $inputDni.removeClass('is-valid').addClass('is-invalid');
+                        erroresEncontrados++;
+
+                        let msgError = (err.responseJSON && err.responseJSON.mensaje) ? err.responseJSON.mensaje : 'Error al consultar servidor.';
+                        actualizarFilaTablaErrores(numLinea, dniLimpio, nombreTexto, msgError);
+                        resolve();
+                    });
+                });
+
+                promesas.push(peticion);
             });
-        });
 
-        promesas.push(peticion);
-    });
+            await Promise.all(promesas);
 
-    // Esperar a que terminen todas las llamadas AJAX
-    await Promise.all(promesas);
+            Swal.close();
 
-    Swal.close();
+            // Sincronizar contadores globales de la UI
+            actualizarEstadoErrores();
 
-    console.log(`📊 === RESUMEN: Proceso finalizado. Errores pendientes: ${erroresEncontrados} ===`);
+            console.log(`📊 === RESUMEN: Proceso finalizado. Errores pendientes: ${erroresEncontrados} ===`);
 
-    if (erroresEncontrados === 0) {
-        $('.alert-danger').fadeOut();
-        $('#cardReporteErrores').fadeOut();
-        $('#btnBloqueado').addClass('d-none');
-        $('#btnGuardar').removeClass('d-none').prop('disabled', false);
+            if (erroresEncontrados === 0) {
+                $('.alert-danger').fadeOut();
+                $('#cardReporteErrores').fadeOut();
+                $('#btnBloqueado').addClass('d-none');
+                $('#btnVerificar').addClass('d-none');
+                $('#btnGuardar').removeClass('d-none').prop('disabled', false);
 
-        Swal.fire({
-            icon: 'success',
-            title: '¡Identidades Verificadas!',
-            text: 'Todos los números coinciden correctamente con la tabla Maestros.',
-            confirmButtonColor: '#198754'
-        });
-    } else {
-        Swal.fire({
-            icon: 'error',
-            title: 'Inconsistencias Detectadas',
-            text: 'Aún hay ' + erroresEncontrados + ' registro(s) cuyos números de DNI no coinciden con Datos Maestros.',
-            confirmButtonColor: '#dc3545'
-        });
-    }
-}
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Identidades Verificadas!',
+                    text: 'Todos los números coinciden correctamente con la tabla Maestros.',
+                    confirmButtonColor: '#198754'
+                });
+            } else {
+                $('#cardReporteErrores').fadeIn();
+                $('#btnGuardar').addClass('d-none');
+                $('#btnBloqueado').removeClass('d-none');
+
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Inconsistencias Detectadas',
+                    text: 'Aún hay ' + erroresEncontrados + ' registro(s) cuyos números de DNI no coinciden con Datos Maestros.',
+                    confirmButtonColor: '#dc3545'
+                });
+            }
+        }
+
+        // 🛠️ FUNCIÓN AUXILIAR 1: Buscar, actualizar o CREAR DINÁMICAMENTE filas en la tabla de errores
+        function actualizarFilaTablaErrores(numLinea, dniNuevo, nombre, mensajeError) {
+            // Asegurar que el contenedor de la tabla sea visible
+            if ($('#cardReporteErrores').is(':hidden')) {
+                $('#cardReporteErrores').fadeIn();
+            }
+
+            let htmlBadge = `<span class="badge bg-danger fs-6">Fila ${numLinea}</span>`;
+            let htmlCampo = `<span class="fw-bold text-secondary">Identidad</span>`;
+            let htmlValores = `<strong class="text-danger">DNI: ${dniNuevo}</strong> | <strong>Nombre: ${nombre}</strong>`;
+            let htmlMensaje = `<ul class="mb-0 text-danger ps-3"><li><i class="fas fa-times-circle me-1"></i>${mensajeError}</li></ul>`;
+
+            let $tr = $('#error-fila-' + numLinea);
+
+            if (!$tr.length) {
+                // Buscar por texto en caso de que falte el id atributado
+                $('#tablaErrores tbody tr').each(function() {
+                    let txt = $(this).find('td:first-child').text().trim();
+                    if (txt === 'Fila ' + numLinea || txt === String(numLinea)) {
+                        $tr = $(this);
+                        return false;
+                    }
+                });
+            }
+
+            if ($tr && $tr.length) {
+                // CASO A: Actualizar fila existente
+                $tr.find('td').eq(2).html(htmlValores);
+                $tr.find('td').eq(3).html(htmlMensaje);
+
+                if (typeof tableErrores !== 'undefined' && tableErrores) {
+                    tableErrores.row($tr).invalidate().draw(false);
+                }
+            } else {
+                // CASO B: Crear nueva fila dinámicamente si el error surgió después
+                if (typeof tableErrores !== 'undefined' && tableErrores) {
+                    let nuevaFilaNodo = tableErrores.row.add([
+                        htmlBadge,
+                        htmlCampo,
+                        htmlValores,
+                        htmlMensaje
+                    ]).draw(false).node();
+
+                    $(nuevaFilaNodo).attr('id', 'error-fila-' + numLinea);
+                    $(nuevaFilaNodo).attr('data-linea', numLinea);
+                    $(nuevaFilaNodo).find('td:first-child').addClass('text-center fw-bold');
+                } else {
+                    let trHtml = `
+                        <tr id="error-fila-${numLinea}" data-linea="${numLinea}">
+                            <td class="text-center fw-bold">${htmlBadge}</td>
+                            <td>${htmlCampo}</td>
+                            <td>${htmlValores}</td>
+                            <td>${htmlMensaje}</td>
+                        </tr>
+                    `;
+                    $('#tablaErrores tbody').append(trHtml);
+                }
+            }
+
+            // Actualizar contadores
+            actualizarEstadoErrores();
+        }
+
+        // 🛠️ FUNCIÓN AUXILIAR 2: Remover la fila si el error se corrigió por completo
+        function removerFilaTablaErrores(numLinea) {
+            if (typeof tableErrores === 'undefined' || !tableErrores) return;
+
+            let $tr = $('#error-fila-' + numLinea);
+
+            if (!$tr.length) {
+                $('#tablaErrores tbody tr').each(function() {
+                    let txt = $(this).find('td:first-child').text().trim();
+                    if (txt === 'Fila ' + numLinea || txt === String(numLinea)) {
+                        $tr = $(this);
+                        return false;
+                    }
+                });
+            }
+
+            if ($tr && $tr.length) {
+                tableErrores.row($tr).remove().draw(false);
+                actualizarEstadoErrores();
+            }
+        }
     </script>
 @endpush
