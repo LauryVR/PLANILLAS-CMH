@@ -6,6 +6,8 @@ use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\CuentaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ConfiguracionController;
+use App\Http\Controllers\TipoCuentaController;
+
 // Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
     return redirect()->route('login');
@@ -62,9 +64,12 @@ Route::middleware(['auth'])->group(function () {
  // --- Módulo Configuracion---
     Route::get('/configuracion', [ConfiguracionController::class, 'index'])->name('configuracion.index');
     // Rutas secundarias para las tarjetas
-Route::get('/configuracion/tipos-cuenta', function () {
-    return "Vista en construcción: Tipos de Cuenta";
-})->name('configuracion.tipos-cuenta.index');
+Route::prefix('configuracion/tipos-cuenta')->name('configuracion.tipos-cuenta.')->group(function () {
+    Route::get('/', [TipoCuentaController::class, 'index'])->name('index');
+    Route::post('/', [TipoCuentaController::class, 'store'])->name('store');
+    Route::put('/{id}', [TipoCuentaController::class, 'update'])->name('update');
+    Route::patch('/{id}/toggle', [TipoCuentaController::class, 'toggleState'])->name('toggle');
+});
 
 Route::get('/configuracion/entes-retencion', function () {
     return "Vista en construcción: Entes de Retención";
