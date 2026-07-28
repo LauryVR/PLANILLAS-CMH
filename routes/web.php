@@ -7,6 +7,7 @@ use App\Http\Controllers\CuentaController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\TipoCuentaController;
+use App\Http\Controllers\EnteRetencionController;
 
 // Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
@@ -71,9 +72,12 @@ Route::prefix('configuracion/tipos-cuenta')->name('configuracion.tipos-cuenta.')
     Route::patch('/{id}/toggle', [TipoCuentaController::class, 'toggleState'])->name('toggle');
 });
 
-Route::get('/configuracion/entes-retencion', function () {
-    return "Vista en construcción: Entes de Retención";
-})->name('configuracion.entes-retencion.index');
+Route::prefix('configuracion/entes-retencion')->name('configuracion.entes-retencion.')->group(function () {
+    Route::get('/', [EnteRetencionController::class, 'index'])->name('index');
+    Route::post('/', [EnteRetencionController::class, 'store'])->name('store');
+    Route::put('/{id}', [EnteRetencionController::class, 'update'])->name('update');
+    Route::patch('/{id}/toggle', [EnteRetencionController::class, 'toggleState'])->name('toggle');
+});
 
 Route::get('/configuracion/prioridades', function () {
     return "Vista en construcción: Prioridad de Cuentas";
