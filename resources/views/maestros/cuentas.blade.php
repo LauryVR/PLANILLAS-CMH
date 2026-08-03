@@ -57,6 +57,67 @@
         </div>
     </div>
 
+{{-- TABLA DE ERRORES DEL EXCEL --}}
+@if(!empty($filasConError) && count($filasConError) > 0)
+
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>¡Atención!</strong>
+        Se encontraron <strong>{{ count($filasConError) }}</strong> registros con errores o campos inválidos.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="card border-danger shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                Registros pendientes de corrección
+            </h5>
+        </div>
+
+        <div class="card-body">
+            <table id="tablaErroresCarga"
+                   class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>Fila</th>
+                        <th>Error</th>
+                        <th>DNI</th>
+                        <th>Nombre</th>
+                        <th>Concepto</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach($filasConError as $error)
+                        <tr>
+                            <td>
+                                <span class="badge bg-danger">
+                                    {{ $error['fila'] }}
+                                </span>
+                            </td>
+
+                            <td class="text-danger fw-bold">
+                                {{ $error['mensaje'] }}
+                            </td>
+
+                            <td>
+                                {{ $error['datos']['dni'] ?? $error['datos'][0] ?? '' }}
+                            </td>
+
+                            <td>
+                                {{ $error['datos']['nombre'] ?? $error['datos'][1] ?? '' }}
+                            </td>
+
+                            <td>
+                                {{ $error['datos']['concepto'] ?? $error['datos'][3] ?? '' }}
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+@endif
 
     {{-- 2. Tabla de Resultados Editables --}}
 {{-- 2. Tabla de Resultados Editables --}}
@@ -123,105 +184,140 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($datos ?? [] as $index => $fila)
-                                @php
-                                    $valColegiado = $fila['no_colegiado'] ?? $fila['numero_colegiado'] ?? 'N/A';
-                                    $valDni       = $fila['dni'] ?? $fila['identidad'] ?? $fila[0] ?? '';
-                                    $valNombre    = $fila['nombre'] ?? $fila[1] ?? '';
-                                    $valCuenta    = $fila['cuenta'] ?? $fila['no_cuenta'] ?? $fila[2] ?? '';
-                                    $valConcepto  = trim($fila['concepto'] ?? $fila['cuenta_concepto'] ?? $fila[3] ?? '');
-                                    $valValor     = $fila['valor_concepto'] ?? $fila['valor'] ?? $fila[4] ?? '';
+                          @foreach($datos ?? [] as $index => $fila)
 
-                                    $tipoSeleccionado = collect($tiposCuenta ?? [])
-                                        ->firstWhere('nombre', $valConcepto);
+    @php
+        $valColegiado = $fila['no_colegiado'] ?? $fila['numero_colegiado'] ?? 'N/A';
+        $valDni       = $fila['dni'] ?? $fila['identidad'] ?? $fila[0] ?? '';
+        $valNombre    = $fila['nombre'] ?? $fila[1] ?? '';
+        $valCuenta    = $fila['cuenta'] ?? $fila['no_cuenta'] ?? $fila[2] ?? '';
+        $valConcepto  = trim($fila['concepto'] ?? $fila['cuenta_concepto'] ?? $fila[3] ?? '');
+        $valValor     = $fila['valor_concepto'] ?? $fila['valor'] ?? $fila[4] ?? '';
 
-                                    $valTipoCuenta = $tipoSeleccionado
-                                        ? $tipoSeleccionado->tipo_cuenta_id
-                                        : '';
+        // Buscar el concepto en la BD
+        $tipoSeleccionado = collect($tiposCuenta ?? [])
+            ->first(function ($item) use ($valConcepto) {
+                return strtoupper(trim($item->nombre))
+                    === strtoupper(trim($valConcepto));
+            });
 
-                                    $numLinea = $fila['linea'] ?? $fila['fila_excel'] ?? ($index + 2);
-                                    $dniClean = strtolower(trim($valDni));
-                                @endphp
+        // Si no existe, deja el concepto vacío
+        $valConcepto = $tipoSeleccionado
+            ? $tipoSeleccionado->nombre
+            : '';
 
-                                @if($dniClean === 'dni' || strtolower(trim($valNombre)) === 'nombre')
-                                    @continue
-                                @endif
+        $valTipoCuenta = $tipoSeleccionado
+            ? $tipoSeleccionado->tipo_cuenta_id
+            : '';
 
-                                @if(empty($valDni) && empty($valNombre))
-                                    @continue
-                                @endif
+        // Marcar fila incompleta
+        $esIncompleto = empty($valConcepto);
 
-                                <tr data-fila-excel="{{ $numLinea }}">
-                                    <td class="text-center fw-bold text-muted">
-                                        {{ $numLinea }}
-                                        <input type="hidden" name="cuentas[{{ $index }}][linea]" value="{{ $numLinea }}">
-                                        <input type="hidden" name="cuentas[{{ $index }}][no_colegiado]" value="{{ $valColegiado }}">
-                                    </td>
+        $numLinea = $fila['linea']
+            ?? $fila['fila_excel']
+            ?? ($index + 2);
 
-                                    <td>
-                                        <span class="badge bg-info text-dark font-monospace fs-6 span-colegiado">
-                                            <i class="fas fa-id-badge me-1"></i>{{ $valColegiado }}
-                                        </span>
-                                    </td>
+        $dniClean = strtolower(trim($valDni));
+    @endphp
 
-                                    <td>
-                                        <input type="text"
-                                               name="cuentas[{{ $index }}][dni]"
-                                               value="{{ $valDni }}"
-                                               class="form-control form-control-sm input-searchable input-dni"
-                                               required>
-                                    </td>
+    @if($dniClean === 'dni' || strtolower(trim($valNombre)) === 'nombre')
+        @continue
+    @endif
 
-                                    <td>
-                                        <input type="text"
-                                               name="cuentas[{{ $index }}][nombre]"
-                                               value="{{ $valNombre }}"
-                                               class="form-control form-control-sm input-searchable input-nombre"
-                                               required>
-                                    </td>
+    @if(empty($valDni) && empty($valNombre))
+        @continue
+    @endif
 
-                                    <td>
-                                        <input type="text"
-                                               name="cuentas[{{ $index }}][cuenta]"
-                                               value="{{ $valCuenta }}"
-                                               class="form-control form-control-sm input-searchable font-monospace input-cuenta"
-                                               required>
-                                    </td>
+    <tr data-fila-excel="{{ $numLinea }}"
+        class="{{ $esIncompleto ? 'table-danger' : '' }}">
 
-                                    <td>
-                                        <select name="cuentas[{{ $index }}][concepto]"
-                                                class="form-select form-control-sm select-concepto input-searchable"
-                                                required>
+        <td class="text-center fw-bold text-muted">
 
-                                            <option value="">-- Seleccionar --</option>
-                                            @foreach($tiposCuenta ?? [] as $tc)
-                                                <option value="{{ $tc->nombre }}"
-                                                        data-id="{{ $tc->tipo_cuenta_id }}"
-                                                        {{ $valConcepto == $tc->nombre ? 'selected' : '' }}>
-                                                    {{ $tc->nombre }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </td>
+            {{ $numLinea }}
 
-                                    <td class="text-center">
-                                        <input type="number"
-                                               name="cuentas[{{ $index }}][tipo_cuenta]"
-                                               value="{{ $valTipoCuenta }}"
-                                               class="form-control form-control-sm text-center fw-bold bg-light input-tipo-cuenta input-searchable"
-                                               readonly>
-                                    </td>
+            @if($esIncompleto)
+                <span class="badge bg-danger d-block mt-1">
+                    ⚠ Corregir
+                </span>
+            @endif
 
-                                    <td>
-                                        <input type="number"
-                                               step="0.01"
-                                               name="cuentas[{{ $index }}][valor_concepto]"
-                                               value="{{ $valValor }}"
-                                               class="form-control form-control-sm text-end input-searchable input-valor"
-                                               required>
-                                    </td>
-                                </tr>
-                            @endforeach
+            <input type="hidden"
+                   name="cuentas[{{ $index }}][linea]"
+                   value="{{ $numLinea }}">
+
+            <input type="hidden"
+                   name="cuentas[{{ $index }}][no_colegiado]"
+                   value="{{ $valColegiado }}">
+        </td>
+
+        <td>
+            <span class="badge bg-info text-dark font-monospace fs-6 span-colegiado">
+                <i class="fas fa-id-badge me-1"></i>{{ $valColegiado }}
+            </span>
+        </td>
+
+        <td>
+            <input type="text"
+                   name="cuentas[{{ $index }}][dni]"
+                   value="{{ $valDni }}"
+                   class="form-control form-control-sm input-searchable input-dni"
+                   required>
+        </td>
+
+        <td>
+            <input type="text"
+                   name="cuentas[{{ $index }}][nombre]"
+                   value="{{ $valNombre }}"
+                   class="form-control form-control-sm input-searchable input-nombre"
+                   required>
+        </td>
+
+        <td>
+            <input type="text"
+                   name="cuentas[{{ $index }}][cuenta]"
+                   value="{{ $valCuenta }}"
+                   class="form-control form-control-sm input-searchable font-monospace input-cuenta"
+                   required>
+        </td>
+
+     <td>
+    <select name="cuentas[{{ $index }}][concepto]"
+            class="form-select form-control-sm select-concepto input-searchable {{ $esIncompleto ? 'is-invalid' : '' }}"
+            required>
+
+        <option value="">-- Seleccionar --</option>
+
+        @foreach($tiposCuenta ?? [] as $tc)
+            <option value="{{ $tc->nombre }}"
+                    data-id="{{ $tc->tipo_cuenta_id }}"
+                    {{ $valConcepto == $tc->nombre ? 'selected' : '' }}>
+                {{ $tc->nombre }}
+            </option>
+        @endforeach
+
+    </select>
+</td>
+
+        <td class="text-center">
+            <input type="number"
+                   name="cuentas[{{ $index }}][tipo_cuenta]"
+                   value="{{ $valTipoCuenta }}"
+                   class="form-control form-control-sm text-center fw-bold bg-light input-tipo-cuenta input-searchable"
+                   readonly>
+        </td>
+
+        <td>
+            <input type="number"
+                   step="0.01"
+                   name="cuentas[{{ $index }}][valor_concepto]"
+                   value="{{ $valValor }}"
+                   class="form-control form-control-sm text-end input-searchable input-valor"
+                   required>
+        </td>
+
+    </tr>
+
+@endforeach
                         </tbody>
                     </table>
                 </div>
@@ -324,25 +420,48 @@
                     ]
                 });
 
+                // Precargar automáticamente tipo_cuenta
+                $('.select-concepto').each(function() {
+                    var tipoId = $(this)
+                        .find('option:selected')
+                        .data('id') || '';
+
+                    $(this)
+                        .closest('tr')
+                        .find('.input-tipo-cuenta')
+                        .val(tipoId);
+                });
+
                 // Cambios dinámicos de select y refresco
                $('#tablaCuentas').on('change', '.select-concepto', function() {
 
-    var $selectedOption = $(this).find('option:selected');
-    var tipoId = $selectedOption.data('id') || '';
+                    var $fila = $(this).closest('tr');
 
-    var $fila = $(this).closest('tr');
+                    var tipoId = $(this)
+                        .find('option:selected')
+                        .data('id') || '';
 
-    $fila.find('.input-tipo-cuenta').val(tipoId);
+                    $fila.find('.input-tipo-cuenta')
+                        .val(tipoId);
 
-    if (table) {
-        table.cell($(this).closest('td')).invalidate();
+                    if (tipoId !== '') {
 
-        table.cell(
-            $fila.find('.input-tipo-cuenta').closest('td')
-        ).invalidate().draw(false);
-    }
+                        $(this).removeClass('is-invalid');
 
-});;
+                        $fila.removeClass('table-danger');
+
+                        $fila.find('.badge.bg-danger').remove();
+                    }
+
+                    if (table) {
+
+                        table.cell(
+                            $fila.find('.input-tipo-cuenta')
+                                .closest('td')
+                        ).invalidate().draw(false);
+                    }
+
+                });
 
                 $('#tablaCuentas').on('change keyup', '.input-searchable', function() {
                     $(this).removeClass('is-invalid');
@@ -386,6 +505,40 @@
                 });
             }
         });
+
+        const btnGuardar = document.querySelector('#btnGuardar');
+
+        if(btnGuardar){
+            btnGuardar.addEventListener('click', function(e){
+
+                let hayErrores = false;
+
+                document.querySelectorAll('#tablaCuentas tbody tr')
+                    .forEach(function(fila){
+
+                    let selectConcepto =
+                        fila.querySelector('.select-concepto');
+
+                    if(
+                        selectConcepto &&
+                        selectConcepto.value === ''
+                    ){
+                        hayErrores = true;
+                        fila.classList.add('table-danger');
+                    }
+                });
+
+                if(hayErrores){
+                    e.preventDefault();
+
+                    Swal.fire({
+                        icon:'warning',
+                        title:'Conceptos pendientes',
+                        text:'Debe seleccionar un concepto antes de guardar.'
+                    });
+                }
+            });
+        }
 
         // Función para actualizar contadores y UI de errores
         function actualizarEstadoErrores() {
@@ -624,31 +777,28 @@
                 actualizarEstadoErrores();
             }
         }
-
-document.addEventListener('change', function(e) {
-
-    if (e.target && e.target.classList.contains('select-concepto')) {
-
-        let select = e.target;
-
-        let selectedOption =
-            select.options[select.selectedIndex];
-
-        let tipoCuentaId =
-            selectedOption.getAttribute('data-id');
-
-        let fila = select.closest('tr');
-
-        let inputTipo =
-            fila.querySelector('.input-tipo-cuenta');
-
-        if (inputTipo) {
-            inputTipo.value = tipoCuentaId;
-        }
-    }
-
-});
-
         
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('select-concepto')) {
+                let select = e.target;
+                let selectedOption = select.options[select.selectedIndex];
+                let tipoCuentaId = selectedOption.getAttribute('data-id') || '';
+                let fila = select.closest('tr');
+                let inputTipo = fila.querySelector('.input-tipo-cuenta');
+
+                if (inputTipo) {
+                    inputTipo.value = tipoCuentaId;
+                }
+
+                if (tipoCuentaId !== '') {
+                    select.classList.remove('is-invalid');
+                    fila.classList.remove('table-danger');
+                    let badge = fila.querySelector('.badge.bg-danger');
+                    if (badge) {
+                        badge.remove();
+                    }
+                }
+            }
+        });
     </script>
 @endpush
