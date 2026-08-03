@@ -90,5 +90,9 @@ Route::prefix('configuracion/prioridades-cuentas')->name('configuracion.priorida
 
     Route::put('/{id}', [PrioridadCuentaController::class, 'update'])->name('update');
     Route::patch('/{id}/toggle', [PrioridadCuentaController::class, 'toggleState'])->name('toggle');
+
+
 });
+
+Route::post('/cuentas/exportar-concepto', [CuentaController::class, 'exportarExcelPorConcepto'])->name('cuentas.exportar.concepto');
 });

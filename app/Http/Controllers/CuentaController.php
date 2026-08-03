@@ -370,6 +370,98 @@ public function verificarDniAjax(Request $request)
     ]);
 }
 
+public function procesarExcel(Request $request)
+{
+    // ... tu lógica para leer el archivo Excel y obtener $filas ...
 
+    $datosValidos = [];
+    $filasConError = [];
+
+    foreach ($filas as $index => $fila) {
+        // Suponiendo que la columna del préstamo se llama 'prestamo' o índice numérico
+        $prestamo = $fila['prestamo'] ?? $fila[2] ?? null; 
+
+        if (empty($prestamo)) {
+            // Guardamos la fila y un mensaje descriptivo del error
+            $filasConError[] = [
+                'fila' => $index + 1, // Número de fila en el Excel (ajustable según tus cabeceras)
+                'datos' => $fila,
+                'mensaje' => 'El campo préstamo está en blanco.'
+            ];
+        } else {
+            $datosValidos[] = $fila;
+        }
+    }
+
+    $tiposCuenta = DB::table('tipos_cuenta')
+                 ->where('activo', 1)
+                 ->orderBy('nombre', 'asc')
+                 ->get();
+
+    // Enviamos tanto los datos limpios como las alertas/errores a la vista
+    return view('maestros.cuentas', compact('tiposCuenta', 'datosValidos', 'filasConError'));
+}
+
+public function exportarExcelPorConcepto(Request $request)
+{
+    $tipoFiltro = $request->input('tipo_filtro');
+    $registros = json_decode($request->input('registros'), true);
+
+    // Filtrar los datos en memoria según el concepto seleccionado
+    $datosFiltrados = array_filter($registros, function($fila) use ($tipoFiltro) {
+        $concepto = strtoupper($fila['cuenta_concepto'] ?? '');
+
+        if ($tipoFiltro === 'cuota') {
+            return str_contains($concepto, 'COLEGIA');
+        } else {
+            return str_contains($concepto, 'PERSONAL') || str_contains($concepto, 'PRESTAMO');
+        }
+    });
+
+    if (empty($datosFiltrados)) {
+        return back()->with('error', 'No se encontraron registros con ese concepto para exportar.');
+    }
+
+    $nombreArchivo = ($tipoFiltro === 'cuota') ? 'cuota_colegial.csv' : 'prestamos.csv';
+
+    $callback = function() use ($datosFiltrados) {
+        $file = fopen('php://output', 'w');
+        
+        // BOM para asegurar compatibilidad de tildes y eñes (UTF-8) en Excel
+        fwrite($file, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Cabeceras separadas por punto y coma
+        $cabeceras = ['Nº Colegiado', 'DNI', 'Nombre', 'Nº Ref. Cuenta', 'Cuenta Concepto', 'Tipo Cuenta', 'Valor Concepto'];
+        fwrite($file, implode(';', $cabeceras) . "\r\n");
+
+      foreach ($datosFiltrados as $row) {
+            // Forzamos el DNI para que Excel no le borre el cero inicial usando comillas y el tab/igual o un truco de formato de texto CSV
+            $dniLimpio = trim(str_replace([';', "\n", "\r", '"'], '', $row['dni'] ?? ''));
+            // Si el DNI tiene números, le anteponemos un apóstrofe interno o formato de texto para CSV
+            $dniFormateado = $dniLimpio !== '' ? '="' . $dniLimpio . '"' : '';
+
+            $linea = [
+                trim(str_replace([';', "\n", "\r"], '', $row['no_colegiado'] ?? '')),
+                $dniFormateado, // <--- DNI protegido para que mantenga el cero inicial
+                trim(str_replace([';', "\n", "\r"], '', $row['nombre'] ?? '')),
+                trim(str_replace([';', "\n", "\r"], '', $row['num_ref'] ?? '')),
+                trim(str_replace([';', "\n", "\r"], '', $row['cuenta_concepto'] ?? '')),
+                trim(str_replace([';', "\n", "\r"], '', $row['tipo_cuenta'] ?? '')),
+                trim(str_replace([';', "\n", "\r"], '', $row['valor_concepto'] ?? ''))
+            ];
+
+            fwrite($file, implode(';', $linea) . "\r\n");
+        }
+        fclose($file);
+    };
+
+    return response()->stream($callback, 200, [
+        "Content-type"        => "text/csv; charset=UTF-8",
+        "Content-Disposition" => "attachment; filename=$nombreArchivo",
+        "Pragma"              => "no-cache",
+        "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+        "Expires"             => "0"
+    ]);
+}
 
 }

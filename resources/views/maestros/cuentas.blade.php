@@ -29,34 +29,43 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-
-    {{-- 1. Card Cargar Archivo --}}
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-file-excel me-2"></i> Cargar Archivo Excel - Cuentas por Cobrar (CxC)
-            </h5>
-        </div>
-        <div class="card-body">
-            <form action="{{ route('cuentas.cargar') }}" method="POST" enctype="multipart/form-data">
-                @csrf
-                <div class="row align-items-end">
-                    <div class="col-md-10 mb-3 mb-md-0">
-                        <label for="archivo" class="form-label fw-bold">
-                            Seleccione el archivo Excel (.xlsx / .xls)
-                        </label>
-                        <input type="file" id="archivo" name="archivo" class="form-control" accept=".xlsx,.xls" required>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-upload me-1"></i> Previsualizar
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
+{{-- 1. Card Cargar Archivo --}}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-file-excel me-2"></i> Cargar Archivo Excel - Cuentas por Cobrar (CxC)
+        </h5>
     </div>
+    <div class="card-body">
+        <form action="{{ route('cuentas.cargar') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="row align-items-end">
+                {{-- Input para seleccionar el archivo --}}
+                <div class="col-md-6 mb-3 mb-md-0">
+                    <label for="archivo" class="form-label fw-bold">
+                        Seleccione el archivo Excel (.xlsx / .xls)
+                    </label>
+                    <input type="file" id="archivo" name="archivo" class="form-control" accept=".xlsx,.xls" required>
+                </div>
 
+                {{-- Botones de acción organizados correctamente --}}
+                <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-md-end">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload me-1"></i> Previsualizar
+                    </button>
+
+                    <button type="button" class="btn btn-success" onclick="exportarExcelPorConcepto('cuota')">
+                        <i class="fas fa-file-excel me-1"></i> Descargar Cuota Colegial
+                    </button>
+
+                    <button type="button" class="btn btn-info text-white" onclick="exportarExcelPorConcepto('prestamo')">
+                        <i class="fas fa-file-excel me-1"></i> Descargar Préstamos
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 {{-- TABLA DE ERRORES DEL EXCEL --}}
 @if(!empty($filasConError) && count($filasConError) > 0)
 
@@ -800,5 +809,72 @@
                 }
             }
         });
+
+
+// Función para exportar según el concepto seleccionado desde la tabla actual
+function exportarExcelPorConcepto(tipo) {
+    let registros = [];
+    
+    // Obtener las filas de la tabla de forma segura (funciona con DataTables y HTML plano)
+    let filas = (typeof table !== 'undefined' && table) ? table.rows().nodes() : $('#tablaCuentas tbody tr');
+
+    $(filas).each(function(index, fila) {
+        let $fila = $(fila);
+        
+        // Extraer celdas de forma limpia asegurando que cada columna tenga su valor correcto
+        let noColegiado = $fila.find('input[name*="no_colegiado"]').val() || $fila.find('td').eq(1).text().trim();
+        let dni = $fila.find('.input-dni').val() || $fila.find('td').eq(2).text().trim();
+        let nombre = $fila.find('.input-nombre').val() || $fila.find('td').eq(3).text().trim();
+        let numRef = $fila.find('input[name*="num_ref"]').val() || $fila.find('td').eq(4).text().trim();
+        let concepto = $fila.find('.select-concepto').val() || $fila.find('td').eq(5).text().trim();
+        let tipoCuenta = $fila.find('.input-tipo-cuenta').val() || $fila.find('td').eq(6).text().trim();
+        let valor = $fila.find('input[name*="valor"]').val() || $fila.find('td').eq(7).text().trim();
+
+        // Evitar agregar filas vacías
+        if (noColegiado !== "" || dni !== "") {
+            registros.push({
+                no_colegiado: noColegiado,
+                dni: dni,
+                nombre: nombre,
+                num_ref: numRef,
+                cuenta_concepto: concepto,
+                tipo_cuenta: tipoCuenta,
+                valor_concepto: valor
+            });
+        }
+    });
+
+    if (registros.length === 0) {
+        Swal.fire('Atención', 'No hay registros en la tabla para exportar.', 'warning');
+        return;
+    }
+
+    // Enviar los datos mediante un formulario dinámico POST oculto hacia Laravel
+    let form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ route('cuentas.exportar.concepto') }}";
+
+    let csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_token';
+    csrfInput.value = "{{ csrf_token() }}";
+    form.appendChild(csrfInput);
+
+    let tipoInput = document.createElement('input');
+    tipoInput.type = 'hidden';
+    tipoInput.name = 'tipo_filtro';
+    tipoInput.value = tipo;
+    form.appendChild(tipoInput);
+
+    let dataInput = document.createElement('input');
+    dataInput.type = 'hidden';
+    dataInput.name = 'registros';
+    dataInput.value = JSON.stringify(registros);
+    form.appendChild(dataInput);
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+}
     </script>
 @endpush
