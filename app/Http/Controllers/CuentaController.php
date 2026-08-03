@@ -15,11 +15,18 @@ class CuentaController extends Controller
     /**
      * Muestra la vista principal.
      */
-    public function index()
-    {
-        return view('maestros.cuentas');
-    }
+public function index()
+{
+    $tiposCuenta = DB::table('tipos_cuenta')
+                 ->where('activo', 1)
+                 ->orderBy('nombre', 'asc')
+                 ->get();
 
+    // Recuperamos los datos de la sesión si el usuario viene de subir un archivo
+    $datos = session('datos', []); 
+
+    return view('maestros.cuentas', compact('tiposCuenta', 'datos'));
+}
     /**
      * Busca un maestro en la BD de forma flexible para mitigar omisión de ceros por parte de Excel.
      */
@@ -361,4 +368,8 @@ public function verificarDniAjax(Request $request)
         'success' => false,
         'mensaje' => "El DNI '{$dniOriginal}' no se encontró en la tabla Maestros."
     ]);
-}}
+}
+
+
+
+}
