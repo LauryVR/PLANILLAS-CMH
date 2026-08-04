@@ -29,311 +29,391 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-{{-- 1. Card Cargar Archivo --}}
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-success text-white">
-        <h5 class="mb-0">
-            <i class="fas fa-file-excel me-2"></i> Cargar Archivo Excel - Cuentas por Cobrar (CxC)
-        </h5>
-    </div>
-    <div class="card-body">
-        <form action="{{ route('cuentas.cargar') }}" method="POST" enctype="multipart/form-data">
-            @csrf
-            <div class="row align-items-end">
-                {{-- Input para seleccionar el archivo --}}
-                <div class="col-md-6 mb-3 mb-md-0">
-                    <label for="archivo" class="form-label fw-bold">
-                        Seleccione el archivo Excel (.xlsx / .xls)
-                    </label>
-                    <input type="file" id="archivo" name="archivo" class="form-control" accept=".xlsx,.xls" required>
-                </div>
 
-                {{-- Botones de acción organizados correctamente --}}
-                <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-md-end">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-upload me-1"></i> Previsualizar
-                    </button>
-
-                    <button type="button" class="btn btn-success" onclick="exportarExcelPorConcepto('cuota')">
-                        <i class="fas fa-file-excel me-1"></i> Descargar Cuota Colegial
-                    </button>
-
-                    <button type="button" class="btn btn-info text-white" onclick="exportarExcelPorConcepto('prestamo')">
-                        <i class="fas fa-file-excel me-1"></i> Descargar Préstamos
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-{{-- TABLA DE ERRORES DEL EXCEL --}}
-@if(!empty($filasConError) && count($filasConError) > 0)
-
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <strong>¡Atención!</strong>
-        Se encontraron <strong>{{ count($filasConError) }}</strong> registros con errores o campos inválidos.
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-
-    <div class="card border-danger shadow-sm mb-4">
-        <div class="card-header bg-danger text-white">
+    {{-- 1. Card Cargar Archivo --}}
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-success text-white">
             <h5 class="mb-0">
-                Registros pendientes de corrección
+                <i class="fas fa-file-excel me-2"></i> Cargar Archivo Excel - Cuentas por Cobrar (CxC)
             </h5>
         </div>
-
         <div class="card-body">
-            <table id="tablaErroresCarga"
-                   class="table table-bordered table-striped">
-                <thead>
-                    <tr>
-                        <th>Fila</th>
-                        <th>Error</th>
-                        <th>DNI</th>
-                        <th>Nombre</th>
-                        <th>Concepto</th>
-                    </tr>
-                </thead>
+            <form action="{{ route('cuentas.cargar') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="row align-items-end">
+                    {{-- Input para seleccionar el archivo --}}
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <label for="archivo" class="form-label fw-bold">
+                            Seleccione el archivo Excel (.xlsx / .xls)
+                        </label>
+                        <input type="file" id="archivo" name="archivo" class="form-control" accept=".xlsx,.xls" required>
+                    </div>
 
-                <tbody>
-                    @foreach($filasConError as $error)
-                        <tr>
-                            <td>
-                                <span class="badge bg-danger">
-                                    {{ $error['fila'] }}
-                                </span>
-                            </td>
+                    {{-- Botones de acción organizados correctamente --}}
+                    <div class="col-md-6 d-flex flex-wrap gap-2 justify-content-md-end">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-upload me-1"></i> Previsualizar
+                        </button>
 
-                            <td class="text-danger fw-bold">
-                                {{ $error['mensaje'] }}
-                            </td>
+                        <button type="button" class="btn btn-success" onclick="exportarExcelPorConcepto('cuota')">
+                            <i class="fas fa-file-excel me-1"></i> Descargar Cuota Colegial
+                        </button>
 
-                            <td>
-                                {{ $error['datos']['dni'] ?? $error['datos'][0] ?? '' }}
-                            </td>
-
-                            <td>
-                                {{ $error['datos']['nombre'] ?? $error['datos'][1] ?? '' }}
-                            </td>
-
-                            <td>
-                                {{ $error['datos']['concepto'] ?? $error['datos'][3] ?? '' }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                        <button type="button" class="btn btn-info text-white" onclick="exportarExcelPorConcepto('prestamo')">
+                            <i class="fas fa-file-excel me-1"></i> Descargar Préstamos
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
     </div>
 
-@endif
+    {{-- 2. Card Cargar Archivo de Retenciones --}}
 
-    {{-- 2. Tabla de Resultados Editables --}}
-{{-- 2. Tabla de Resultados Editables --}}
-@if(!empty(session('datos')) || !empty($datos))
-    <form id="formGuardarCuentas" action="{{ route('cuentas.guardar') }}" method="POST">
-        @csrf
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                    <h5 class="mb-0 fw-bold text-primary">
-                        <i class="fas fa-edit me-2"></i> Previsualización y Edición de Cuentas
-                    </h5>
-                    {{-- Corrección: Se asegura que $datos sea un array antes de contar --}}
-                    <small class="text-muted">Se van a procesar <strong>{{ count($datos ?? []) }}</strong> registros de cuentas.</small>
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="fas fa-file-invoice-dollar me-2"></i> Cargar Archivo Excel - Retenciones
+            </h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ route('retenciones.cargar') }}" method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="row align-items-end">
+                    <div class="col-md-10 mb-3 mb-md-0">
+                        <label for="archivo_retencion" class="form-label fw-bold">
+                            Seleccione el archivo Excel de Retenciones (.xlsx / .xls)
+                        </label>
+                        <input type="file" id="archivo_retencion" name="archivo_retencion" class="form-control" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-warning text-dark w-100 fw-bold">
+                            <i class="fas fa-upload me-1"></i> Previsualizar Retenciones
+                        </button>
+                    </div>
                 </div>
+            </form>
+        </div>
+    </div>
 
-                <div class="d-flex gap-2">
-                    @if(session('errores_excel'))
-                        <button type="button" 
-                                id="btnVerificar" 
-                                class="btn btn-warning d-inline-flex align-items-center gap-2 fw-semibold shadow-sm"
-                                onclick="verificarCorrecciones()">
-                            <i class="bi bi-shield-check fs-5"></i>
-                            <span>Verificar</span>
-                        </button>
 
-                        <button type="submit" id="btnGuardar" class="btn btn-success d-none">
-                            <i class="fas fa-save me-1"></i> Guardar Cambios
-                        </button>
-                        <button type="button" id="btnBloqueado" class="btn btn-secondary" disabled title="Corrija los errores reportados abajo para poder guardar">
-                            <i class="fas fa-lock me-1"></i> Correcciones requeridas
-                        </button>
-                    @else
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-save me-1"></i> Guardar Cambios
-                        </button>
-                    @endif
-                </div>
+    {{-- TABLA DE ERRORES DEL EXCEL --}}
+    @if(!empty($filasConError) && count($filasConError) > 0)
+
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>¡Atención!</strong>
+            Se encontraron <strong>{{ count($filasConError) }}</strong> registros con errores o campos inválidos.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <div class="card border-danger shadow-sm mb-4">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    Registros pendientes de corrección
+                </h5>
             </div>
 
             <div class="card-body">
-                <div class="table-responsive">
-                    <table id="tablaCuentas" class="table table-bordered table-hover align-middle mb-0 w-100">
-                        <thead class="table-success">
+                <table id="tablaErroresCarga"
+                       class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Fila</th>
+                            <th>Error</th>
+                            <th>DNI</th>
+                            <th>Nombre</th>
+                            <th>Concepto</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach($filasConError as $error)
                             <tr>
-                                <th width="50" class="text-center"># Fila</th>
-                                <th>N° Colegiado</th>
+                                <td>
+                                    <span class="badge bg-danger">
+                                        {{ $error['fila'] ?? '' }}
+                                    </span>
+                                </td>
+
+                                <td class="text-danger fw-bold">
+                                    {{ $error['mensaje'] ?? '' }}
+                                </td>
+
+                                <td>
+                                    {{ $error['datos']['dni'] ?? $error['datos'][0] ?? '' }}
+                                </td>
+
+                                <td>
+                                    {{ $error['datos']['nombre'] ?? $error['datos'][1] ?? '' }}
+                                </td>
+
+                                <td>
+                                    {{ $error['datos']['concepto'] ?? $error['datos'][3] ?? '' }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    @endif
+
+    {{-- 2. Tabla de Resultados Editables --}}
+    @if(!empty(session('datos')) || !empty($datos))
+        <form id="formGuardarCuentas" action="{{ route('cuentas.guardar') }}" method="POST">
+            @csrf
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="mb-0 fw-bold text-primary">
+                            <i class="fas fa-edit me-2"></i> Previsualización y Edición de Cuentas
+                        </h5>
+                        {{-- Corrección: Se asegura que $datos sea un array antes de contar --}}
+                        <small class="text-muted">Se van a procesar <strong>{{ count($datos ?? []) }}</strong> registros de cuentas.</small>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        @if(session('errores_excel'))
+                            <button type="button" 
+                                    id="btnVerificar" 
+                                    class="btn btn-warning d-inline-flex align-items-center gap-2 fw-semibold shadow-sm"
+                                    onclick="verificarCorrecciones()">
+                                <i class="bi bi-shield-check fs-5"></i>
+                                <span>Verificar</span>
+                            </button>
+
+                            <button type="submit" id="btnGuardar" class="btn btn-success d-none">
+                                <i class="fas fa-save me-1"></i> Guardar Cambios
+                            </button>
+                            <button type="button" id="btnBloqueado" class="btn btn-secondary" disabled title="Corrija los errores reportados abajo para poder guardar">
+                                <i class="fas fa-lock me-1"></i> Correcciones requeridas
+                            </button>
+                        @else
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save me-1"></i> Guardar Cambios
+                            </button>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablaCuentas" class="table table-bordered table-hover align-middle mb-0 w-100">
+                            <thead class="table-success">
+                                <tr>
+                                    <th width="50" class="text-center"># Fila</th>
+                                    <th>N° Colegiado</th>
+                                    <th>DNI</th>
+                                    <th>Nombre</th>
+                                    <th>N° Ref. Cuenta</th>
+                                    <th>Cuenta Concepto</th>
+                                    <th width="110" class="text-center">Tipo Cuenta</th>
+                                    <th>Valor Concepto</th>
+                                </tr>
+                                <tr class="filter-row bg-light">
+                                    <th></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar DNI..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Nombre..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Ref..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Concepto..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Tipo..."></th>
+                                    <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Valor..."></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($datos ?? [] as $index => $fila)
+
+                                    @php
+                                        $valColegiado = $fila['no_colegiado'] ?? $fila['numero_colegiado'] ?? 'N/A';
+                                        $valDni       = $fila['dni'] ?? $fila['identidad'] ?? $fila[0] ?? '';
+                                        $valNombre    = $fila['nombre'] ?? $fila[1] ?? '';
+                                        $valCuenta    = $fila['cuenta'] ?? $fila['no_cuenta'] ?? $fila[2] ?? '';
+                                        $valConcepto  = trim($fila['concepto'] ?? $fila['cuenta_concepto'] ?? $fila[3] ?? '');
+                                        $valValor     = $fila['valor_concepto'] ?? $fila['valor'] ?? $fila[4] ?? '';
+
+                                        // Buscar el concepto en la BD
+                                        $tipoSeleccionado = collect($tiposCuenta ?? [])
+                                            ->first(function ($item) use ($valConcepto) {
+                                                return strtoupper(trim($item->nombre))
+                                                    === strtoupper(trim($valConcepto));
+                                            });
+
+                                        // Si no existe, deja el concepto vacío
+                                        $valConcepto = $tipoSeleccionado
+                                            ? $tipoSeleccionado->nombre
+                                            : '';
+
+                                        $valTipoCuenta = $tipoSeleccionado
+                                            ? $tipoSeleccionado->tipo_cuenta_id
+                                            : '';
+
+                                        // Marcar fila incompleta
+                                        $esIncompleto = empty($valConcepto);
+
+                                        $numLinea = $fila['linea']
+                                            ?? $fila['fila_excel']
+                                            ?? ($index + 2);
+
+                                        $dniClean = strtolower(trim($valDni));
+                                    @endphp
+
+                                    @if($dniClean === 'dni' || strtolower(trim($valNombre)) === 'nombre')
+                                        @continue
+                                    @endif
+
+                                    @if(empty($valDni) && empty($valNombre))
+                                        @continue
+                                    @endif
+
+                                    <tr data-fila-excel="{{ $numLinea }}"
+                                        class="{{ $esIncompleto ? 'table-danger' : '' }}">
+
+                                        <td class="text-center fw-bold text-muted">
+
+                                            {{ $numLinea }}
+
+                                            @if($esIncompleto)
+                                                <span class="badge bg-danger d-block mt-1">
+                                                    ⚠ Corregir
+                                                </span>
+                                            @endif
+
+                                            <input type="hidden"
+                                                   name="cuentas[{{ $index }}][linea]"
+                                                   value="{{ $numLinea }}">
+
+                                            <input type="hidden"
+                                                   name="cuentas[{{ $index }}][no_colegiado]"
+                                                   value="{{ $valColegiado }}">
+                                        </td>
+
+                                        <td>
+                                            <span class="badge bg-info text-dark font-monospace fs-6 span-colegiado">
+                                                <i class="fas fa-id-badge me-1"></i>{{ $valColegiado }}
+                                            </span>
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="cuentas[{{ $index }}][dni]"
+                                                   value="{{ $valDni }}"
+                                                   class="form-control form-control-sm input-searchable input-dni"
+                                                   required>
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="cuentas[{{ $index }}][nombre]"
+                                                   value="{{ $valNombre }}"
+                                                   class="form-control form-control-sm input-searchable input-nombre"
+                                                   required>
+                                        </td>
+
+                                        <td>
+                                            <input type="text"
+                                                   name="cuentas[{{ $index }}][cuenta]"
+                                                   value="{{ $valCuenta }}"
+                                                   class="form-control form-control-sm input-searchable font-monospace input-cuenta"
+                                                   required>
+                                        </td>
+
+                                        <td>
+                                            <select name="cuentas[{{ $index }}][concepto]"
+                                                    class="form-select form-control-sm select-concepto input-searchable {{ $esIncompleto ? 'is-invalid' : '' }}"
+                                                    required>
+
+                                                <option value="">-- Seleccionar --</option>
+
+                                                @foreach($tiposCuenta ?? [] as $tc)
+                                                    <option value="{{ $tc->nombre }}"
+                                                            data-id="{{ $tc->tipo_cuenta_id }}"
+                                                            {{ $valConcepto == $tc->nombre ? 'selected' : '' }}>
+                                                        {{ $tc->nombre }}
+                                                    </option>
+                                                @endforeach
+
+                                            </select>
+                                        </td>
+
+                                        <td class="text-center">
+                                            <input type="number"
+                                                   name="cuentas[{{ $index }}][tipo_cuenta]"
+                                                   value="{{ $valTipoCuenta }}"
+                                                   class="form-control form-control-sm text-center fw-bold bg-light input-tipo-cuenta input-searchable"
+                                                   readonly>
+                                        </td>
+
+                                        <td>
+                                            <input type="number"
+                                                   step="0.01"
+                                                   name="cuentas[{{ $index }}][valor_concepto]"
+                                                   value="{{ $valValor }}"
+                                                   class="form-control form-control-sm text-end input-searchable input-valor"
+                                                   required>
+                                        </td>
+
+                                    </tr>
+
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </form>
+    @endif
+
+
+    
+{{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
+    @if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-invoice-dollar me-2"></i> Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    {{-- Se agregó el id="tablaRetenciones" para inicializarla con DataTables --}}
+                    <table id="tablaRetenciones" class="table table-bordered table-striped align-middle">
+                        <thead>
+                            <tr>
                                 <th>DNI</th>
                                 <th>Nombre</th>
-                                <th>N° Ref. Cuenta</th>
-                                <th>Cuenta Concepto</th>
-                                <th width="110" class="text-center">Tipo Cuenta</th>
-                                <th>Valor Concepto</th>
-                            </tr>
-                            <tr class="filter-row bg-light">
-                                <th></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar DNI..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Nombre..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Ref..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Concepto..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Tipo..."></th>
-                                <th><input type="text" class="form-control form-control-sm column-filter" placeholder="Filtrar Valor..."></th>
+                                <th>Monto a Cobrar</th>
                             </tr>
                         </thead>
                         <tbody>
-                          @foreach($datos ?? [] as $index => $fila)
+                            @foreach(session('retenciones_cargadas') as $ret)
+                                @php
+                                    $dniBruto = trim($ret['dni'] ?? '');
+                                    
+                                    if (is_numeric($dniBruto)) {
+                                        $dniLimpio = number_format((float)$dniBruto, 0, '', '');
+                                    } else {
+                                        $dniLimpio = $dniBruto;
+                                    }
 
-    @php
-        $valColegiado = $fila['no_colegiado'] ?? $fila['numero_colegiado'] ?? 'N/A';
-        $valDni       = $fila['dni'] ?? $fila['identidad'] ?? $fila[0] ?? '';
-        $valNombre    = $fila['nombre'] ?? $fila[1] ?? '';
-        $valCuenta    = $fila['cuenta'] ?? $fila['no_cuenta'] ?? $fila[2] ?? '';
-        $valConcepto  = trim($fila['concepto'] ?? $fila['cuenta_concepto'] ?? $fila[3] ?? '');
-        $valValor     = $fila['valor_concepto'] ?? $fila['valor'] ?? $fila[4] ?? '';
-
-        // Buscar el concepto en la BD
-        $tipoSeleccionado = collect($tiposCuenta ?? [])
-            ->first(function ($item) use ($valConcepto) {
-                return strtoupper(trim($item->nombre))
-                    === strtoupper(trim($valConcepto));
-            });
-
-        // Si no existe, deja el concepto vacío
-        $valConcepto = $tipoSeleccionado
-            ? $tipoSeleccionado->nombre
-            : '';
-
-        $valTipoCuenta = $tipoSeleccionado
-            ? $tipoSeleccionado->tipo_cuenta_id
-            : '';
-
-        // Marcar fila incompleta
-        $esIncompleto = empty($valConcepto);
-
-        $numLinea = $fila['linea']
-            ?? $fila['fila_excel']
-            ?? ($index + 2);
-
-        $dniClean = strtolower(trim($valDni));
-    @endphp
-
-    @if($dniClean === 'dni' || strtolower(trim($valNombre)) === 'nombre')
-        @continue
-    @endif
-
-    @if(empty($valDni) && empty($valNombre))
-        @continue
-    @endif
-
-    <tr data-fila-excel="{{ $numLinea }}"
-        class="{{ $esIncompleto ? 'table-danger' : '' }}">
-
-        <td class="text-center fw-bold text-muted">
-
-            {{ $numLinea }}
-
-            @if($esIncompleto)
-                <span class="badge bg-danger d-block mt-1">
-                    ⚠ Corregir
-                </span>
-            @endif
-
-            <input type="hidden"
-                   name="cuentas[{{ $index }}][linea]"
-                   value="{{ $numLinea }}">
-
-            <input type="hidden"
-                   name="cuentas[{{ $index }}][no_colegiado]"
-                   value="{{ $valColegiado }}">
-        </td>
-
-        <td>
-            <span class="badge bg-info text-dark font-monospace fs-6 span-colegiado">
-                <i class="fas fa-id-badge me-1"></i>{{ $valColegiado }}
-            </span>
-        </td>
-
-        <td>
-            <input type="text"
-                   name="cuentas[{{ $index }}][dni]"
-                   value="{{ $valDni }}"
-                   class="form-control form-control-sm input-searchable input-dni"
-                   required>
-        </td>
-
-        <td>
-            <input type="text"
-                   name="cuentas[{{ $index }}][nombre]"
-                   value="{{ $valNombre }}"
-                   class="form-control form-control-sm input-searchable input-nombre"
-                   required>
-        </td>
-
-        <td>
-            <input type="text"
-                   name="cuentas[{{ $index }}][cuenta]"
-                   value="{{ $valCuenta }}"
-                   class="form-control form-control-sm input-searchable font-monospace input-cuenta"
-                   required>
-        </td>
-
-     <td>
-    <select name="cuentas[{{ $index }}][concepto]"
-            class="form-select form-control-sm select-concepto input-searchable {{ $esIncompleto ? 'is-invalid' : '' }}"
-            required>
-
-        <option value="">-- Seleccionar --</option>
-
-        @foreach($tiposCuenta ?? [] as $tc)
-            <option value="{{ $tc->nombre }}"
-                    data-id="{{ $tc->tipo_cuenta_id }}"
-                    {{ $valConcepto == $tc->nombre ? 'selected' : '' }}>
-                {{ $tc->nombre }}
-            </option>
-        @endforeach
-
-    </select>
-</td>
-
-        <td class="text-center">
-            <input type="number"
-                   name="cuentas[{{ $index }}][tipo_cuenta]"
-                   value="{{ $valTipoCuenta }}"
-                   class="form-control form-control-sm text-center fw-bold bg-light input-tipo-cuenta input-searchable"
-                   readonly>
-        </td>
-
-        <td>
-            <input type="number"
-                   step="0.01"
-                   name="cuentas[{{ $index }}][valor_concepto]"
-                   value="{{ $valValor }}"
-                   class="form-control form-control-sm text-end input-searchable input-valor"
-                   required>
-        </td>
-
-    </tr>
-
-@endforeach
+                                    if (strlen($dniLimpio) === 12) {
+                                        $dniLimpio = '0' . $dniLimpio;
+                                    }
+                                @endphp
+                                <tr>
+                                    <td>{{ $dniLimpio }}</td>
+                                    <td>{{ $ret['nombre'] ?? '' }}</td>
+                                    <td>{{ $ret['monto'] ?? '' }}</td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-    </form>
-@endif
+    @endif
+
     {{-- 3. Reporte de Errores y Validaciones --}}
     @if(session('errores_excel'))
         <div id="cardReporteErrores" class="card shadow-sm border-danger mb-4">
@@ -393,7 +473,6 @@
 
 </div>
 @endsection
-
 @push('scripts')
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -876,5 +955,6 @@ function exportarExcelPorConcepto(tipo) {
     form.submit();
     document.body.removeChild(form);
 }
+
     </script>
 @endpush

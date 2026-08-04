@@ -95,4 +95,8 @@ Route::prefix('configuracion/prioridades-cuentas')->name('configuracion.priorida
 });
 
 Route::post('/cuentas/exportar-concepto', [CuentaController::class, 'exportarExcelPorConcepto'])->name('cuentas.exportar.concepto');
+
+
+// 🆕 Nueva ruta para cargar Retenciones
+Route::post('/retenciones/cargar', [CuentaController::class, 'cargarRetenciones'])->name('retenciones.cargar');
 });
