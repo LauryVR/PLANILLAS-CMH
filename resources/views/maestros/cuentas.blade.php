@@ -95,7 +95,30 @@
             </form>
         </div>
     </div>
-
+    
+{{-- 4. Formulario para Cargar Archivo de Entes Retenedores --}}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-file-upload me-2"></i> Cargar Archivo Excel - Motor de Entes Retenedores
+        </h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ route('cargar.entes.retenedores') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div class="mb-3">
+                <label for="archivo_entes" class="form-label fw-bold">Seleccione el archivo Excel de Entes Retenedores (.xlsx / .xls)</label>
+                <div class="input-group">
+                    <input type="file" class="form-control" id="archivo_entes" name="archivo_entes" accept=".xlsx, .xls, .csv" required>
+                    <button type="submit" class="btn btn-secondary text-white">
+                        <i class="fas fa-cogs me-1"></i> Previsualizar Entes
+                    </button>
+                </div>
+                <div class="form-text">Asegúrese de que el archivo contenga las columnas de DNI y los valores de retención (cuotas, préstamos, etc.).</div>
+            </div>
+        </form>
+    </div>
+</div>
 
     {{-- TABLA DE ERRORES DEL EXCEL --}}
     @if(!empty($filasConError) && count($filasConError) > 0)
@@ -487,8 +510,67 @@
                 </div>
             </div>
         </div>
-    @endif
 
+
+        
+    @endif
+{{-- 4. Tabla de Previsualización de Entes Retenedores Cargados --}}
+@if(session('entes_retenedores') && count(session('entes_retenedores')) > 0)
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-cogs me-2"></i> Motor de Entes Retenedores ({{ count(session('entes_retenedores')) }} registros)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="tablaEntesRetenedores" class="table table-bordered table-striped align-middle text-center">
+                    <thead>
+                        <tr>
+                            <th>DNI</th>
+                            <th>Cuota Cole</th>
+                            <th>Automático</th>
+                            <th>Estudio</th>
+                            <th>Refinancia</th>
+                            <th>Readecuaci</th>
+                            <th>Personal</th>
+                            <th>Compra Deu</th>
+                            <th>Hipotecario</th>
+                            <th>Vehículo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(session('entes_retenedores') as $ente)
+                            @php
+                                $dniBruto = trim($ente['dni'] ?? '');
+                                if (is_numeric($dniBruto)) {
+                                    $dniLimpio = number_format((float)$dniBruto, 0, '', '');
+                                } else {
+                                    $dniLimpio = $dniBruto;
+                                }
+                                if (strlen($dniLimpio) === 12) {
+                                    $dniLimpio = '0' . $dniLimpio;
+                                }
+                            @endphp
+                            <tr>
+                                <td class="fw-bold text-start">{{ $dniLimpio }}</td>
+                                <td>{{ $ente['cuota_cole'] }}</td>
+                                <td>{{ $ente['automatico'] }}</td>
+                                <td>{{ $ente['estudio'] }}</td>
+                                <td>{{ $ente['refinancia'] }}</td>
+                                <td>{{ $ente['readecuaci'] }}</td>
+                                <td>{{ $ente['personal'] }}</td>
+                                <td>{{ $ente['compra_deu'] }}</td>
+                                <td>{{ $ente['hipotecario'] }}</td>
+                                <td>{{ $ente['vehiculo'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@endif
 </div>
 @endsection
 @push('scripts')

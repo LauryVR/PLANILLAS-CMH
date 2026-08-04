@@ -16,18 +16,19 @@ class CuentaController extends Controller
      * Muestra la vista principal.
      */
 public function index()
-{
-    $tiposCuenta = DB::table('tipos_cuenta')
-                 ->where('activo', 1)
-                 ->orderBy('nombre', 'asc')
-                 ->get();
+    {
+        $tiposCuenta = DB::table('tipos_cuenta')
+                     ->where('activo', 1)
+                     ->orderBy('nombre', 'asc')
+                     ->get();
 
-    // Recuperamos ambas sesiones de forma independiente
-    $datos = session('datos', []); 
-    $retenciones = session('retenciones_cargadas', []);
+        // Recuperamos las tres sesiones de forma independiente
+        $datos = session('datos', []); 
+        $retenciones = session('retenciones_cargadas', []);
+        $entesRetenedores = session('entes_retenedores', []);
 
-    return view('maestros.cuentas', compact('tiposCuenta', 'datos', 'retenciones'));
-}
+        return view('maestros.cuentas', compact('tiposCuenta', 'datos', 'retenciones', 'entesRetenedores'));
+    }
 
     /**
      * Busca un maestro en la BD de forma flexible para mitigar omisión de ceros por parte de Excel.
@@ -75,117 +76,96 @@ public function index()
      * Procesa el archivo Excel cargado y realiza las validaciones contra la tabla 'maestros'.
      */
  public function cargarExcel(Request $request)
-{
-    $request->validate([
-        'archivo' => 'required|mimes:xlsx,xls'
-    ]);
+    {
+        $request->validate([
+            'archivo' => 'required|mimes:xlsx,xls'
+        ]);
 
-    $file = $request->file('archivo');
+        $file = $request->file('archivo');
 
-    $spreadsheet = IOFactory::load($file->getRealPath());
-    $worksheet   = $spreadsheet->getActiveSheet();
-    $filas       = $worksheet->toArray();
+        $spreadsheet = IOFactory::load($file->getRealPath());
+        $worksheet   = $spreadsheet->getActiveSheet();
+        $filas       = $worksheet->toArray();
 
-    $todosLosDatos = [];
-    $erroresExcel  = [];
+        $todosLosDatos = [];
+        $erroresExcel  = [];
 
-    foreach ($filas as $index => $fila) {
+        foreach ($filas as $index => $fila) {
+            $numLinea = $index + 1;
 
-        $numLinea = $index + 1;
-
-        if ($index === 0 && strtolower(trim($fila[0] ?? '')) === 'dni') {
-            continue;
-        }
-
-        if (empty($fila[0]) && empty($fila[1])) {
-            continue;
-        }
-
-        $dni           = trim($fila[0] ?? '');
-        $nombre        = trim($fila[1] ?? '');
-        $cuenta        = trim($fila[2] ?? '');
-        $concepto      = trim($fila[3] ?? '');
-        $valorConcepto = trim($fila[4] ?? '');
-
-        $registroActual = [
-            'linea'          => $numLinea,
-            'no_colegiado'   => 'N/A',
-            'dni'            => $dni,
-            'nombre'         => $nombre,
-            'cuenta'         => $cuenta,
-            'concepto'       => $concepto,
-            'valor_concepto' => $valorConcepto,
-            'tipo_cuenta'    => 10,
-            'tiene_error'    => false
-        ];
-
-        $mensajesError = [];
-        $camposError   = [];
-
-        $maestro = $this->buscarMaestroFlexible($dni);
-
-        if (!$maestro) {
-
-            $camposError[]   = 'Identidad';
-            $mensajesError[] = "La identidad/DNI '{$dni}' no existe en Maestros.";
-
-        } else {
-
-            $registroActual['dni']          = $maestro->dni;
-            $registroActual['no_colegiado'] = $maestro->no_colegiado ?? 'N/A';
-
-            $nombreMaestro = trim($maestro->nombre ?? '');
-
-            if (strtolower($nombreMaestro) !== strtolower($nombre)) {
-
-                $camposError[]   = 'Nombre';
-                $mensajesError[] = "El nombre '{$nombre}' no coincide con '{$nombreMaestro}'";
+            if ($index === 0 && strtolower(trim($fila[0] ?? '')) === 'dni') {
+                continue;
             }
-        }
 
-        if (!empty($mensajesError)) {
+            if (empty($fila[0]) && empty($fila[1])) {
+                continue;
+            }
 
-            $erroresExcel[] = [
-                'linea'    => $numLinea,
-                'campos'   => implode(', ', $camposError),
-                'valores'  => "DNI: {$dni} | Nombre: {$nombre}",
-                'mensajes' => $mensajesError
+            $dni           = trim($fila[0] ?? '');
+            $nombre        = trim($fila[1] ?? '');
+            $cuenta        = trim($fila[2] ?? '');
+            $concepto      = trim($fila[3] ?? '');
+            $valorConcepto = trim($fila[4] ?? '');
+
+            $registroActual = [
+                'linea'          => $numLinea,
+                'no_colegiado'   => 'N/A',
+                'dni'            => $dni,
+                'nombre'         => $nombre,
+                'cuenta'         => $cuenta,
+                'concepto'       => $concepto,
+                'valor_concepto' => $valorConcepto,
+                'tipo_cuenta'    => 10,
+                'tiene_error'    => false
             ];
+
+            $mensajesError = [];
+            $camposError   = [];
+
+            $maestro = $this->buscarMaestroFlexible($dni);
+
+            if (!$maestro) {
+                $camposError[]   = 'Identidad';
+                $mensajesError[] = "La identidad/DNI '{$dni}' no existe en Maestros.";
+            } else {
+                $registroActual['dni']          = $maestro->dni;
+                $registroActual['no_colegiado'] = $maestro->no_colegiado ?? 'N/A';
+
+                $nombreMaestro = trim($maestro->nombre ?? '');
+
+                if (strtolower($nombreMaestro) !== strtolower($nombre)) {
+                    $camposError[]   = 'Nombre';
+                    $mensajesError[] = "El nombre '{$nombre}' no coincide con '{$nombreMaestro}'";
+                }
+            }
+
+            if (!empty($mensajesError)) {
+                $erroresExcel[] = [
+                    'linea'    => $numLinea,
+                    'campos'   => implode(', ', $camposError),
+                    'valores'  => "DNI: {$dni} | Nombre: {$nombre}",
+                    'mensajes' => $mensajesError
+                ];
+            }
+
+            $todosLosDatos[] = $registroActual;
         }
 
-        $todosLosDatos[] = $registroActual;
-    }
+        // Guardar cuentas de forma independiente (Laravel mantiene las demás en sesión)
+        session()->put('datos', $todosLosDatos);
 
-    // Mantener retenciones existentes
-    $retencionesActuales = session()->get('retenciones_cargadas', []);
+        if (count($erroresExcel) > 0) {
+            session()->put('errores_excel', $erroresExcel);
 
-    // Guardar cuentas
-    session()->put('datos', $todosLosDatos);
-
-    // Mantener retenciones
-    session()->put('retenciones_cargadas', $retencionesActuales);
-
-    if (count($erroresExcel) > 0) {
-
-        session()->put('errores_excel', $erroresExcel);
+            return redirect()
+                ->route('cuentas.index')
+                ->with('error', 'Se encontraron inconsistencias en ' . count($erroresExcel) . ' fila(s).');
+        }
 
         return redirect()
             ->route('cuentas.index')
-            ->with(
-                'error',
-                'Se encontraron inconsistencias en '
-                . count($erroresExcel)
-                . ' fila(s).'
-            );
+            ->with('success', 'Archivo de cuentas procesado correctamente.');
     }
-
-    return redirect()
-        ->route('cuentas.index')
-        ->with(
-            'success',
-            'Archivo de cuentas procesado correctamente.'
-        );
-}
 
 public function cargarRetenciones(Request $request)
     {
@@ -200,10 +180,9 @@ public function cargarRetenciones(Request $request)
             $sheet = $spreadsheet->getActiveSheet();
             $filas = $sheet->toArray();
 
-            // 1. Recuperamos las cuentas por cobrar actuales de la sesión persistente
+            // Recuperamos las cuentas por cobrar actuales de la sesión para el cruce de nombres
             $datosActuales = $request->session()->get('datos', []);
 
-            // Creamos un mapa rápido de DNI => Nombre basado en las Cuentas por Cobrar cargadas
             $mapaCuentasPorCobrar = [];
             foreach ($datosActuales as $cuentaItem) {
                 $dniCuenta = trim($cuentaItem['dni'] ?? '');
@@ -214,11 +193,11 @@ public function cargarRetenciones(Request $request)
             }
 
             $retenciones = [];
-            $erroresRetencion = []; // Para la alerta superior
+            $erroresRetencion = [];
 
             for ($i = 1; $i < count($filas); $i++) {
                 $fila = $filas[$i];
-                $numLinea = $i + 1; // Fila real en el Excel
+                $numLinea = $i + 1;
                 
                 $dni = trim($fila[0] ?? '');
                 $nombreArchivoRetencion = trim($fila[1] ?? '');
@@ -233,7 +212,6 @@ public function cargarRetenciones(Request $request)
                 $tieneError = false;
                 $mensajeError = '';
 
-                // 2. Validar DNI en la base de datos (usando tu método flexible)
                 $maestro = $this->buscarMaestroFlexible($dni);
 
                 if (!$maestro) {
@@ -244,7 +222,6 @@ public function cargarRetenciones(Request $request)
                     $dniValido = $maestro->dni;
                     $nombreBd = trim($maestro->nombre ?? '');
 
-                    // Cruzar con Cuentas por Cobrar o Base de Datos
                     if (isset($mapaCuentasPorCobrar[$dniValido])) {
                         $nombreCxC = $mapaCuentasPorCobrar[$dniValido];
                         if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreCxC)) {
@@ -267,21 +244,16 @@ public function cargarRetenciones(Request $request)
                 ];
             }
 
-            // 3. Guardamos de forma PERSISTENTE usando put()
-            $request->session()->put('datos', $datosActuales);
+            // Guardar solo las retenciones de forma independiente
             $request->session()->put('retenciones_cargadas', $retenciones);
 
-            $redirect = back()
-                ->with('datos', $datosActuales)
-                ->with('retenciones_cargadas', $retenciones);
-
             if (count($erroresRetencion) > 0) {
-                // Guardamos el detalle de errores específicos para mostrarlos en el Alert
-                return $redirect->with('errores_retencion_detalle', $erroresRetencion)
-                                ->with('error', 'Se encontraron errores en la planilla de retención. Por favor, revise las filas marcadas en rojo, corrija su archivo y vuelva a cargar la planilla de retención.');
+                return back()
+                    ->with('errores_retencion_detalle', $erroresRetencion)
+                    ->with('error', 'Se encontraron errores en la planilla de retención. Por favor, revise las filas marcadas en rojo.');
             }
 
-            return $redirect->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
+            return back()->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
 
         } catch (\Exception $e) {
             return back()->with('error', 'Error al leer el archivo de retenciones: ' . $e->getMessage());
@@ -588,5 +560,64 @@ public function exportarExcelPorConcepto(Request $request)
     ]);
 }
 
+
+public function cargarEntesRetenedores(Request $request)
+    {
+        $request->validate([
+            'archivo_entes' => 'required|mimes:xlsx,xls,csv'
+        ]);
+
+        $archivo = $request->file('archivo_entes');
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+            
+            $entesRetenedores = [];
+            $highestRow = $sheet->getHighestRow();
+            
+            for ($i = 2; $i <= $highestRow; $i++) {
+                $dniBruto = $sheet->getCell('A' . $i)->getValue();
+                
+                if (empty($dniBruto)) {
+                    continue;
+                }
+
+                if (is_numeric($dniBruto)) {
+                    $dni = number_format((float)$dniBruto, 0, '', '');
+                } else {
+                    $dni = trim($dniBruto);
+                }
+
+                if (strlen($dni) === 12) {
+                    $dni = '0' . $dni;
+                }
+
+                $registroEnte = [
+                    'linea' => $i,
+                    'dni' => $dni,
+                    'cuota_cole' => trim($sheet->getCell('B' . $i)->getValue() ?? 0),
+                    'automatico' => trim($sheet->getCell('C' . $i)->getValue() ?? 0),
+                    'estudio' => trim($sheet->getCell('D' . $i)->getValue() ?? 0),
+                    'refinancia' => trim($sheet->getCell('E' . $i)->getValue() ?? 0),
+                    'readecuaci' => trim($sheet->getCell('F' . $i)->getValue() ?? 0),
+                    'personal' => trim($sheet->getCell('G' . $i)->getValue() ?? 0),
+                    'compra_deu' => trim($sheet->getCell('H' . $i)->getValue() ?? 0),
+                    'hipotecario' => trim($sheet->getCell('I' . $i)->getValue() ?? 0),
+                    'vehiculo' => trim($sheet->getCell('J' . $i)->getValue() ?? 0),
+                ];
+
+                $entesRetenedores[] = $registroEnte;
+            }
+
+            // Guardar solo los entes retenedores de forma independiente
+            $request->session()->put('entes_retenedores', $entesRetenedores);
+
+            return back()->with('success', 'Archivo del Motor de Entes Retenedores leído correctamente. Se procesaron ' . count($entesRetenedores) . ' registros.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al leer el archivo de entes retenedores: ' . $e->getMessage());
+        }
+    }
 
 }

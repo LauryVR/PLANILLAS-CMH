@@ -99,4 +99,7 @@ Route::post('/cuentas/exportar-concepto', [CuentaController::class, 'exportarExc
 
 // 🆕 Nueva ruta para cargar Retenciones
 Route::post('/retenciones/cargar', [CuentaController::class, 'cargarRetenciones'])->name('retenciones.cargar');
+
+
+Route::post('/cargar-entes-retenedores', [CuentaController::class, 'cargarEntesRetenedores'])->name('cargar.entes.retenedores');
 });
