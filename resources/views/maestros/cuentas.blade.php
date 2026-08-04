@@ -366,53 +366,71 @@
     @endif
 
 
-    
-{{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
-    @if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
-        <div class="card shadow-sm border-0 mb-4">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">
-                    <i class="fas fa-file-invoice-dollar me-2"></i> Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    {{-- Se agregó el id="tablaRetenciones" para inicializarla con DataTables --}}
-                    <table id="tablaRetenciones" class="table table-bordered table-striped align-middle">
-                        <thead>
-                            <tr>
-                                <th>DNI</th>
-                                <th>Nombre</th>
-                                <th>Monto a Cobrar</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach(session('retenciones_cargadas') as $ret)
-                                @php
-                                    $dniBruto = trim($ret['dni'] ?? '');
-                                    
-                                    if (is_numeric($dniBruto)) {
-                                        $dniLimpio = number_format((float)$dniBruto, 0, '', '');
-                                    } else {
-                                        $dniLimpio = $dniBruto;
-                                    }
+  {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
+@if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">
+                <i class="fas fa-file-invoice-dollar me-2"></i> Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
+            </h5>
+        </div>
+        <div class="card-body">
 
-                                    if (strlen($dniLimpio) === 12) {
-                                        $dniLimpio = '0' . $dniLimpio;
-                                    }
-                                @endphp
-                                <tr>
-                                    <td>{{ $dniLimpio }}</td>
-                                    <td>{{ $ret['nombre'] ?? '' }}</td>
-                                    <td>{{ $ret['monto'] ?? '' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+            {{-- Alerta detallada si hay errores en las retenciones --}}
+            @if(session('errores_retencion_detalle'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Error en Planilla de Retención</h5>
+                    <p class="mb-2">Por favor, corrija los siguientes errores en su archivo Excel y <strong>vuelva a cargar la planilla de retención</strong>:</p>
+                    <ul class="mb-0">
+                        @foreach(session('errores_retencion_detalle') as $errDetalle)
+                            <li>{{ $errDetalle }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
+            @endif
+
+            <div class="table-responsive">
+                <table id="tablaRetenciones" class="table table-bordered table-striped align-middle">
+                    <thead>
+                        <tr>
+                            <th>DNI</th>
+                            <th>Nombre</th>
+                            <th>Monto a Cobrar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(session('retenciones_cargadas') as $ret)
+                            @php
+                                $dniBruto = trim($ret['dni'] ?? '');
+                                
+                                if (is_numeric($dniBruto)) {
+                                    $dniLimpio = number_format((float)$dniBruto, 0, '', '');
+                                } else {
+                                    $dniLimpio = $dniBruto;
+                                }
+
+                                if (strlen($dniLimpio) === 12) {
+                                    $dniLimpio = '0' . $dniLimpio;
+                                }
+
+                                $tieneError = $ret['tiene_error'] ?? false;
+                                $detalleError = $ret['detalle_error'] ?? '';
+                            @endphp
+                            
+                            {{-- Si tiene error, se pinta la fila completa de rojo con table-danger sin alterar columnas --}}
+                            <tr class="{{ $tieneError ? 'table-danger' : '' }}" @if($tieneError) title="{{ $detalleError }}" @endif>
+                                <td>{{ $dniLimpio }}</td>
+                                <td>{{ $ret['nombre'] ?? '' }}</td>
+                                <td>{{ $ret['monto'] ?? '' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
         </div>
-    @endif
+    </div>
+@endif
 
     {{-- 3. Reporte de Errores y Validaciones --}}
     @if(session('errores_excel'))

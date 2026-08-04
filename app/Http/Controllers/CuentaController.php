@@ -188,75 +188,105 @@ public function index()
 }
 
 public function cargarRetenciones(Request $request)
-{
-    $request->validate([
-        'archivo_retencion' => 'required|mimes:xlsx,xls,csv'
-    ]);
-
-    try {
+    {
+        $request->validate([
+            'archivo_retencion' => 'required|mimes:xlsx,xls,csv'
+        ]);
 
         $archivo = $request->file('archivo_retencion');
 
-        $spreadsheet = IOFactory::load(
-            $archivo->getPathname()
-        );
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+            $filas = $sheet->toArray();
 
-        $sheet = $spreadsheet->getActiveSheet();
+            // 1. Recuperamos las cuentas por cobrar actuales de la sesión persistente
+            $datosActuales = $request->session()->get('datos', []);
 
-        $filas = $sheet->toArray();
+            // Creamos un mapa rápido de DNI => Nombre basado en las Cuentas por Cobrar cargadas
+            $mapaCuentasPorCobrar = [];
+            foreach ($datosActuales as $cuentaItem) {
+                $dniCuenta = trim($cuentaItem['dni'] ?? '');
+                $nombreCuenta = trim($cuentaItem['nombre'] ?? '');
+                if (!empty($dniCuenta)) {
+                    $mapaCuentasPorCobrar[$dniCuenta] = $nombreCuenta;
+                }
+            }
 
-        $retenciones = [];
+            $retenciones = [];
+            $erroresRetencion = []; // Para la alerta superior
 
-        for ($i = 1; $i < count($filas); $i++) {
+            for ($i = 1; $i < count($filas); $i++) {
+                $fila = $filas[$i];
+                $numLinea = $i + 1; // Fila real en el Excel
+                
+                $dni = trim($fila[0] ?? '');
+                $nombreArchivoRetencion = trim($fila[1] ?? '');
+                $monto = trim($fila[2] ?? 0);
 
-            $fila = $filas[$i];
+                if (empty($dni) && empty($nombreArchivoRetencion)) {
+                    continue;
+                }
 
-            $dni    = trim($fila[0] ?? '');
-            $nombre = trim($fila[1] ?? '');
-            $monto  = trim($fila[2] ?? 0);
+                $nombreFinal = $nombreArchivoRetencion;
+                $dniValido = $dni;
+                $tieneError = false;
+                $mensajeError = '';
 
-            if (!empty($dni)) {
+                // 2. Validar DNI en la base de datos (usando tu método flexible)
+                $maestro = $this->buscarMaestroFlexible($dni);
+
+                if (!$maestro) {
+                    $tieneError = true;
+                    $mensajeError = "El DNI '{$dni}' no se encuentra registrado en el sistema.";
+                    $erroresRetencion[] = "Fila {$numLinea}: {$mensajeError}";
+                } else {
+                    $dniValido = $maestro->dni;
+                    $nombreBd = trim($maestro->nombre ?? '');
+
+                    // Cruzar con Cuentas por Cobrar o Base de Datos
+                    if (isset($mapaCuentasPorCobrar[$dniValido])) {
+                        $nombreCxC = $mapaCuentasPorCobrar[$dniValido];
+                        if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreCxC)) {
+                            $nombreFinal = $nombreCxC;
+                        }
+                    } else {
+                        if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreBd)) {
+                            $nombreFinal = $nombreBd;
+                        }
+                    }
+                }
 
                 $retenciones[] = [
-                    'dni'    => $dni,
-                    'nombre' => $nombre,
-                    'monto'  => $monto
+                    'linea' => $numLinea,
+                    'dni' => $dniValido,
+                    'nombre' => $nombreFinal,
+                    'monto' => $monto,
+                    'tiene_error' => $tieneError,
+                    'detalle_error' => $mensajeError
                 ];
             }
+
+            // 3. Guardamos de forma PERSISTENTE usando put()
+            $request->session()->put('datos', $datosActuales);
+            $request->session()->put('retenciones_cargadas', $retenciones);
+
+            $redirect = back()
+                ->with('datos', $datosActuales)
+                ->with('retenciones_cargadas', $retenciones);
+
+            if (count($erroresRetencion) > 0) {
+                // Guardamos el detalle de errores específicos para mostrarlos en el Alert
+                return $redirect->with('errores_retencion_detalle', $erroresRetencion)
+                                ->with('error', 'Se encontraron errores en la planilla de retención. Por favor, revise las filas marcadas en rojo, corrija su archivo y vuelva a cargar la planilla de retención.');
+            }
+
+            return $redirect->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error al leer el archivo de retenciones: ' . $e->getMessage());
         }
-
-        // Recuperar cuentas ya cargadas
-        $datosActuales = session()->get('datos', []);
-
-        // Volver a guardarlas
-        session()->put('datos', $datosActuales);
-
-        // Guardar retenciones
-        session()->put(
-            'retenciones_cargadas',
-            $retenciones
-        );
-
-        return redirect()
-            ->route('cuentas.index')
-            ->with(
-                'success',
-                'Archivo de retenciones cargado correctamente. Total: '
-                . count($retenciones)
-            );
-
-    } catch (\Exception $e) {
-
-        return redirect()
-            ->route('cuentas.index')
-            ->with(
-                'error',
-                'Error al leer retenciones: '
-                . $e->getMessage()
-            );
     }
-}
-
     
     /**
      * Guarda masivamente en la BD los datos validados.
