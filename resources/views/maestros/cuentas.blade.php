@@ -95,7 +95,7 @@
             </form>
         </div>
     </div>
-    
+
 {{-- 4. Formulario para Cargar Archivo de Entes Retenedores --}}
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-secondary text-white">
@@ -551,9 +551,22 @@
                                 if (strlen($dniLimpio) === 12) {
                                     $dniLimpio = '0' . $dniLimpio;
                                 }
+
+                                $tieneError = $ente['tiene_error'] ?? false;
+                                $numLinea = $ente['linea'] ?? '';
+                                $detalleError = $ente['detalle_error'] ?? "El DNI no existe en la base de datos (Fila {$numLinea})";
                             @endphp
-                            <tr>
-                                <td class="fw-bold text-start">{{ $dniLimpio }}</td>
+                            
+                            <tr class="{{ $tieneError ? 'table-danger' : '' }}">
+                                <td class="fw-bold text-start">
+                                    {{ $dniLimpio }}
+                                    @if($tieneError)
+                                        <i class="fas fa-exclamation-circle text-danger ms-1" 
+                                           data-bs-toggle="tooltip" 
+                                           title="Fila {{ $numLinea }}: {{ $detalleError }}"></i>
+                                        <div class="small text-danger">Fila {{ $numLinea }}: No existe en base de datos maestros</div>
+                                    @endif
+                                </td>
                                 <td>{{ $ente['cuota_cole'] }}</td>
                                 <td>{{ $ente['automatico'] }}</td>
                                 <td>{{ $ente['estudio'] }}</td>

@@ -562,62 +562,89 @@ public function exportarExcelPorConcepto(Request $request)
 
 
 public function cargarEntesRetenedores(Request $request)
-    {
-        $request->validate([
-            'archivo_entes' => 'required|mimes:xlsx,xls,csv'
-        ]);
+{
+    $request->validate([
+        'archivo_entes' => 'required|mimes:xlsx,xls,csv'
+    ]);
 
-        $archivo = $request->file('archivo_entes');
+    $archivo = $request->file('archivo_entes');
 
-        try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
-            $sheet = $spreadsheet->getActiveSheet();
+    try {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $entesRetenedores = [];
+        $erroresEntes = [];
+        $highestRow = $sheet->getHighestRow();
+        
+        for ($i = 2; $i <= $highestRow; $i++) {
+            $dniBruto = $sheet->getCell('A' . $i)->getValue();
             
-            $entesRetenedores = [];
-            $highestRow = $sheet->getHighestRow();
-            
-            for ($i = 2; $i <= $highestRow; $i++) {
-                $dniBruto = $sheet->getCell('A' . $i)->getValue();
-                
-                if (empty($dniBruto)) {
-                    continue;
-                }
-
-                if (is_numeric($dniBruto)) {
-                    $dni = number_format((float)$dniBruto, 0, '', '');
-                } else {
-                    $dni = trim($dniBruto);
-                }
-
-                if (strlen($dni) === 12) {
-                    $dni = '0' . $dni;
-                }
-
-                $registroEnte = [
-                    'linea' => $i,
-                    'dni' => $dni,
-                    'cuota_cole' => trim($sheet->getCell('B' . $i)->getValue() ?? 0),
-                    'automatico' => trim($sheet->getCell('C' . $i)->getValue() ?? 0),
-                    'estudio' => trim($sheet->getCell('D' . $i)->getValue() ?? 0),
-                    'refinancia' => trim($sheet->getCell('E' . $i)->getValue() ?? 0),
-                    'readecuaci' => trim($sheet->getCell('F' . $i)->getValue() ?? 0),
-                    'personal' => trim($sheet->getCell('G' . $i)->getValue() ?? 0),
-                    'compra_deu' => trim($sheet->getCell('H' . $i)->getValue() ?? 0),
-                    'hipotecario' => trim($sheet->getCell('I' . $i)->getValue() ?? 0),
-                    'vehiculo' => trim($sheet->getCell('J' . $i)->getValue() ?? 0),
-                ];
-
-                $entesRetenedores[] = $registroEnte;
+            if (empty($dniBruto)) {
+                continue;
             }
 
-            // Guardar solo los entes retenedores de forma independiente
-            $request->session()->put('entes_retenedores', $entesRetenedores);
+            // Limpieza y formato exacto del DNI
+            if (is_numeric($dniBruto)) {
+                $dni = number_format((float)$dniBruto, 0, '', '');
+            } else {
+                $dni = trim($dniBruto);
+            }
 
-            return back()->with('success', 'Archivo del Motor de Entes Retenedores leído correctamente. Se procesaron ' . count($entesRetenedores) . ' registros.');
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
 
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al leer el archivo de entes retenedores: ' . $e->getMessage());
+            $numLinea = $i;
+            $tieneError = false;
+            $mensajeError = '';
+            $dniValido = $dni;
+
+            // Validar DNI en la base de datos usando tu método flexible
+            $maestro = $this->buscarMaestroFlexible($dni);
+
+            if (!$maestro) {
+                $tieneError = true;
+                $mensajeError = "El DNI/Identidad '{$dni}' no existe en Maestros.";
+                $erroresEntes[] = "Fila {$numLinea}: {$mensajeError}";
+            } else {
+                // Si lo encuentra, usamos el DNI oficial normalizado de la BD si es necesario
+                $dniValido = $maestro->dni;
+            }
+
+            $registroEnte = [
+                'linea'        => $numLinea,
+                'dni'          => $dniValido,
+                'cuota_cole'   => trim($sheet->getCell('B' . $i)->getValue() ?? 0),
+                'automatico'   => trim($sheet->getCell('C' . $i)->getValue() ?? 0),
+                'estudio'      => trim($sheet->getCell('D' . $i)->getValue() ?? 0),
+                'refinancia'   => trim($sheet->getCell('E' . $i)->getValue() ?? 0),
+                'readecuaci'   => trim($sheet->getCell('F' . $i)->getValue() ?? 0),
+                'personal'     => trim($sheet->getCell('G' . $i)->getValue() ?? 0),
+                'compra_deu'   => trim($sheet->getCell('H' . $i)->getValue() ?? 0),
+                'hipotecario'  => trim($sheet->getCell('I' . $i)->getValue() ?? 0),
+                'vehiculo'     => trim($sheet->getCell('J' . $i)->getValue() ?? 0),
+                'tiene_error'  => $tieneError,
+                'detalle_error'=> $mensajeError
+            ];
+
+            $entesRetenedores[] = $registroEnte;
         }
+
+        // Guardamos los entes retenedores en la sesión
+        $request->session()->put('entes_retenedores', $entesRetenedores);
+
+        if (count($erroresEntes) > 0) {
+            return back()
+                ->with('errores_entes_detalle', $erroresEntes)
+                ->with('error', 'Se encontraron errores de identidad en el archivo de Entes Retenedores. Revise las filas marcadas.');
+        }
+
+        return back()->with('success', 'Archivo del Motor de Entes Retenedores leído y validado correctamente. Se procesaron ' . count($entesRetenedores) . ' registros.');
+
+    } catch (\Exception $e) {
+        return back()->with('error', 'Error al leer el archivo de entes retenedores: ' . $e->getMessage());
     }
+}
 
 }
