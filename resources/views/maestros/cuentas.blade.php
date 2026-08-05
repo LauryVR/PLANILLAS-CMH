@@ -394,24 +394,27 @@
             </div>
         </form>
     @endif
-
-
-  {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
+    {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
 @if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-warning text-dark">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
                 <i class="fas fa-file-invoice-dollar me-2"></i> Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
             </h5>
+            {{-- Barra de búsqueda rápida --}}
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="buscadorRetenciones" class="form-control" placeholder="Buscar por DNI o Nombre...">
+            </div>
         </div>
         <div class="card-body">
 
             {{-- Alerta detallada si hay errores en las retenciones --}}
             @if(session('errores_retencion_detalle'))
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Error en Planilla de Retención</h5>
-                    <p class="mb-2">Por favor, corrija los siguientes errores en su archivo Excel y <strong>vuelva a cargar la planilla de retención</strong>:</p>
-                    <ul class="mb-0">
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Errores detectados en la Planilla</h5>
+                    <p class="mb-2">Por favor, corrija los siguientes errores en su archivo Excel (DNIs duplicados o inexistentes) y <strong>vuelva a cargar</strong>:</p>
+                    <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
                         @foreach(session('errores_retencion_detalle') as $errDetalle)
                             <li>{{ $errDetalle }}</li>
                         @endforeach
@@ -421,9 +424,10 @@
             @endif
 
             <div class="table-responsive">
-                <table id="tablaRetenciones" class="table table-bordered table-striped align-middle">
-                    <thead>
+                <table id="tablaRetenciones" class="table table-bordered table-striped table-hover align-middle small">
+                    <thead class="table-secondary text-nowrap">
                         <tr>
+                            <th>Fila Excel</th>
                             <th>DNI</th>
                             <th>Nombre</th>
                             <th>Monto a Cobrar</th>
@@ -448,11 +452,12 @@
                                 $detalleError = $ret['detalle_error'] ?? '';
                             @endphp
                             
-                            {{-- Si tiene error, se pinta la fila completa de rojo con table-danger sin alterar columnas --}}
-                            <tr class="{{ $tieneError ? 'table-danger' : '' }}" @if($tieneError) title="{{ $detalleError }}" @endif>
-                                <td>{{ $dniLimpio }}</td>
-                                <td>{{ $ret['nombre'] ?? '' }}</td>
-                                <td>{{ $ret['monto'] ?? '' }}</td>
+                            {{-- Si tiene error, se pinta la fila de rojo y muestra el motivo al pasar el mouse --}}
+                            <tr class="{{ $tieneError ? 'table-danger fw-bold' : '' }}" @if($tieneError) title="{{ $detalleError }}" @endif>
+                                <td class="text-center text-nowrap">#{{ $ret['linea'] ?? '-' }}</td>
+                                <td class="text-nowrap dni-cell">{{ $dniLimpio }}</td>
+                                <td class="text-start name-cell">{{ $ret['nombre'] ?? '' }}</td>
+                                <td class="text-end text-nowrap">{{ number_format((float)($ret['monto'] ?? 0), 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -460,6 +465,25 @@
             </div>
         </div>
     </div>
+
+    {{-- Script JavaScript para la barra de búsqueda instantánea en la tabla --}}
+    <script>
+        document.getElementById('buscadorRetenciones').addEventListener('keyup', function() {
+            let filtro = this.value.toLowerCase();
+            let filas = document.querySelectorAll('#tablaRetenciones tbody tr');
+
+            filas.forEach(function(fila) {
+                let dni = fila.querySelector('.dni-cell').textContent.toLowerCase();
+                let nombre = fila.querySelector('.name-cell').textContent.toLowerCase();
+
+                if (dni.includes(filtro) || nombre.includes(filtro)) {
+                    fila.style.display = '';
+                } else {
+                    fila.style.display = 'none';
+                }
+            });
+        });
+    </script>
 @endif
 
     {{-- 3. Reporte de Errores y Validaciones --}}
@@ -517,72 +541,97 @@
                 </div>
             </div>
         </div>
+@endif
 
 
-        
-    @endif
 {{-- 4. Tabla de Previsualización de Entes Retenedores Cargados --}}
 @if(session('entes_retenedores') && count(session('entes_retenedores')) > 0)
+    @php
+        $entesRetenedores = session('entes_retenedores');
+
+        $columnasPosibles = [
+            'cuota_cole'  => 'Cuota Cole',
+            'automatico'  => 'Automático',
+            'estudio'     => 'Estudio',
+            'refinancia'  => 'Refinancia',
+            'readecuaci'  => 'Readecuaci',
+            'personal'    => 'Personal',
+            'compra_deu'  => 'Compra Deu',
+            'hipotecario' => 'Hipotecario',
+            'vehiculo'    => 'Vehículo'
+        ];
+    @endphp
+
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-secondary text-white">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
-                <i class="fas fa-cogs me-2"></i> Motor de Entes Retenedores ({{ count(session('entes_retenedores')) }} registros)
+                <i class="fas fa-cogs me-2"></i> Motor de Entes Retenedores ({{ count($entesRetenedores) }} registros)
             </h5>
+            {{-- Barra de búsqueda rápida --}}
+            <div class="input-group input-group-sm" style="max-width: 300px;">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="buscadorEntes" class="form-control" placeholder="Buscar por DNI...">
+            </div>
         </div>
         <div class="card-body">
+
+            {{-- Alerta detallada si hay errores en entes retenedores --}}
+            @if(session('errores_entes_detalle'))
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Errores en Entes Retenedores</h5>
+                    <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
+                        @foreach(session('errores_entes_detalle') as $errEnte)
+                            <li>{{ $errEnte }}</li>
+                        @endforeach
+                    </ul>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
+
             <div class="table-responsive">
-                <table id="tablaEntesRetenedores" class="table table-bordered table-striped align-middle text-center">
-                    <thead>
+                <table id="tablaEntesRetenedores" class="table table-bordered table-striped align-middle text-center small">
+                    <thead class="table-dark text-nowrap">
                         <tr>
+                            <th>Fila</th>
                             <th>DNI</th>
-                            <th>Cuota Cole</th>
-                            <th>Automático</th>
-                            <th>Estudio</th>
-                            <th>Refinancia</th>
-                            <th>Readecuaci</th>
-                            <th>Personal</th>
-                            <th>Compra Deu</th>
-                            <th>Hipotecario</th>
-                            <th>Vehículo</th>
+                            @foreach($columnasPosibles as $colKey => $colTitle)
+                                <th>{{ $colTitle }}</th>
+                            @endforeach
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach(session('entes_retenedores') as $ente)
+                        @foreach($entesRetenedores as $ente)
                             @php
                                 $dniBruto = trim($ente['dni'] ?? '');
-                                if (is_numeric($dniBruto)) {
-                                    $dniLimpio = number_format((float)$dniBruto, 0, '', '');
-                                } else {
-                                    $dniLimpio = $dniBruto;
-                                }
+                                $dniLimpio = is_numeric($dniBruto) ? number_format((float)$dniBruto, 0, '', '') : $dniBruto;
                                 if (strlen($dniLimpio) === 12) {
                                     $dniLimpio = '0' . $dniLimpio;
                                 }
-
                                 $tieneError = $ente['tiene_error'] ?? false;
-                                $numLinea = $ente['linea'] ?? '';
-                                $detalleError = $ente['detalle_error'] ?? "El DNI no existe en la base de datos (Fila {$numLinea})";
+                                $numLinea = $ente['linea'] ?? '-';
+                                $detalleError = $ente['detalle_error'] ?? "Error en Fila {$numLinea}";
                             @endphp
-                            
-                            <tr class="{{ $tieneError ? 'table-danger' : '' }}">
-                                <td class="fw-bold text-start">
+                            <tr class="{{ $tieneError ? 'table-danger fw-bold' : '' }}">
+                                <td class="text-nowrap">#{{ $numLinea }}</td>
+                                <td class="text-nowrap dni-cell font-monospace">
                                     {{ $dniLimpio }}
                                     @if($tieneError)
-                                        <i class="fas fa-exclamation-circle text-danger ms-1" 
-                                           data-bs-toggle="tooltip" 
-                                           title="Fila {{ $numLinea }}: {{ $detalleError }}"></i>
-                                        <div class="small text-danger">Fila {{ $numLinea }}: No existe en base de datos maestros</div>
+                                        <i class="fas fa-exclamation-circle text-danger ms-1" title="Fila {{ $numLinea }}: {{ $detalleError }}"></i>
+                                        <div class="small text-danger fw-normal">Fila {{ $numLinea }}: {{ $detalleError }}</div>
                                     @endif
                                 </td>
-                                <td>{{ $ente['cuota_cole'] }}</td>
-                                <td>{{ $ente['automatico'] }}</td>
-                                <td>{{ $ente['estudio'] }}</td>
-                                <td>{{ $ente['refinancia'] }}</td>
-                                <td>{{ $ente['readecuaci'] }}</td>
-                                <td>{{ $ente['personal'] }}</td>
-                                <td>{{ $ente['compra_deu'] }}</td>
-                                <td>{{ $ente['hipotecario'] }}</td>
-                                <td>{{ $ente['vehiculo'] }}</td>
+                                @foreach($columnasPosibles as $colKey => $colTitle)
+                                    @php
+                                        $valCol = floatval($ente[$colKey] ?? 0);
+                                    @endphp
+                                    <td class="text-end">
+                                        @if($valCol > 0)
+                                            <span class="text-success fw-bold">{{ number_format($valCol, 2) }}</span>
+                                        @else
+                                            <span class="text-muted">0.00</span>
+                                        @endif
+                                    </td>
+                                @endforeach
                             </tr>
                         @endforeach
                     </tbody>
@@ -590,9 +639,25 @@
             </div>
         </div>
     </div>
-@endif
-</div>
 
+    {{-- Script JavaScript para la búsqueda instantánea en Entes Retenedores --}}
+    <script>
+        document.getElementById('buscadorEntes').addEventListener('keyup', function() {
+            let filtro = this.value.toLowerCase();
+            let filas = document.querySelectorAll('#tablaEntesRetenedores tbody tr');
+
+            filas.forEach(function(fila) {
+                let dni = fila.querySelector('.dni-cell').textContent.toLowerCase();
+
+                if (dni.includes(filtro)) {
+                    fila.style.display = '';
+                } else {
+                    fila.style.display = 'none';
+                }
+            });
+        });
+    </script>
+@endif
 <!-- Modal de Confirmación para Reiniciar -->
 <div class="modal fade" id="modalReiniciar" tabindex="-1" aria-labelledby="modalReiniciarLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -618,95 +683,382 @@
     </div>
 </div>
 
-@if(session('sifco_insumos') && count(session('sifco_insumos')) > 0)
-    <div class="card shadow-sm border-0 mb-4 mt-4">
-        <div class="card-header bg-dark text-white">
-            <h5 class="mb-0">
-                <i class="fas fa-table me-2"></i> SIFCO INSUMOS ({{ count(session('sifco_insumos')) }} registros)
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped align-middle text-center small">
-                   <thead>
-        <tr class="table-secondary">
-            <th>Ente Retenedor</th>
-            <th>Código Colegial</th>
-            <th>Codigo SIFCO</th>
-            <th>Cuenta Número</th>
-            <th>Cuenta Referencia</th>
-            <th>Cuenta Nombre</th>
-            <th>No. Identificación</th>
-            <th>Producto</th>
-            <th>Valor a Pagar</th>
-            <th>Valor Real Pago</th>
-            <th>Boleta</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach(session('sifco_insumos', []) as $sifco)
-            <tr>
-                <td>{{ $sifco['ente_retenedor'] }}</td>
-                <td>{{ $sifco['codigo_colegial'] }}</td>
-                <td>{{ $sifco['codigo_sifco'] }}</td>
-                <td class="fw-bold">{{ $sifco['cuenta_numero'] }}</td>
-                <td>{{ $sifco['cuenta_referencia'] }}</td>
-                <td class="text-start">{{ $sifco['cuenta_nombre'] }}</td>
-                <td>{{ $sifco['no_identificacion'] }}</td>
-                <td class="text-start">{{ $sifco['producto'] }}</td>
-                <td class="text-end">{{ number_format((float)$sifco['valor_a_pagar'], 2) }}</td>
-                <td class="text-end">{{ number_format((float)$sifco['valor_real_pago'], 2) }}</td>
-                <td>{{ $sifco['boleta'] }}</td>
-            </tr>
-        @endforeach
-    </tbody>
-                </table>
-            </div>
-        </div>
+
+
+@if(session('notificaciones_descartes'))
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>Avisos de validación de Entes Retenedores:</strong>
+        <ul>
+            @foreach(session('notificaciones_descartes') as $aviso)
+                <li>{!! $aviso !!}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 @endif
 
 
-<!-- TABLA INSUMOS SAP -->
-<div class="card mt-4 shadow-sm">
-    <div class="card-header bg-dark text-white">
-        <h5 class="mb-0">Insumos SAP (Control de Remanentes)</h5>
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle text-center">
-                <thead>
-                    <tr class="table-secondary">
-                        <th>Código Colegial</th>
-                        <th>No. Identificación</th>
-                        <th>Nombre</th>
-                        <th>Total Retenido</th>
-                        <th>Total Pagado a Cuentas</th>
-                        <th>Remanente</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse(session('insumos_sap', []) as $sap)
+@if(session('sifco_insumos') && count(session('sifco_insumos')) > 0)
+    @php
+        $sifcoInsumos = session('sifco_insumos');
+
+        // Definir todas las columnas posibles de SIFCO Insumos
+        $columnasPosiblesSifco = [
+            'ente_retenedor'    => 'Ente Retenedor',
+            'codigo_colegial'   => 'Código Colegial',
+            'codigo_sifco'      => 'Codigo SIFCO',
+            'cuenta_numero'     => 'Cuenta Número',
+            'cuenta_referencia' => 'Cuenta Referencia',
+            'cuenta_nombre'     => 'Cuenta Nombre',
+            'no_identificacion' => 'No. Identificación',
+            'producto'          => 'Producto',
+            'valor_a_pagar'     => 'Valor a Pagar',
+            'valor_real_pago'   => 'Valor Real Pago',
+            'boleta'            => 'Boleta'
+        ];
+
+        // Filtrar dinámicamente solo las columnas que tengan al menos un valor no vacío / distinto de cero
+        $columnasActivasSifco = [];
+        foreach ($columnasPosiblesSifco as $key => $titulo) {
+            $tieneDatos = false;
+            foreach ($sifcoInsumos as $sifco) {
+                $valor = trim($sifco[$key] ?? '');
+                if ($valor !== '' && $valor !== '0' && $valor !== 0 && $valor !== '0.00') {
+                    $tieneDatos = true;
+                    break;
+                }
+            }
+            if ($tieneDatos) {
+                $columnasActivasSifco[$key] = $titulo;
+            }
+        }
+    @endphp
+
+    <!-- TABLA SIFCO INSUMOS (LIMPIA SIN COLUMNA DE ALERTA) -->
+    <div class="card shadow-sm border-0 mb-4 mt-4">
+        <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i> SIFCO INSUMOS (<span id="contadorRegistros">{{ count($sifcoInsumos) }}</span> registros visibles)
+            </h5>
+            {{-- Filtro de Cuota Colegial o Seleccionar Todo y Buscador --}}
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="filtroProducto" class="form-select form-select-sm" style="max-width: 210px;">
+                    <option value="">-- Todos los conceptos --</option>
+                    <option value="cuota colegial">Cuota Colegial</option>
+                </select>
+
+                <div class="input-group input-group-sm" style="max-width: 220px;">
+                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="buscadorSifco" class="form-control" placeholder="Buscar DNI o Nombre...">
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive m-0">
+                <table id="tablaSifcoInsumos" class="table table-bordered table-striped table-hover align-middle text-center small mb-0">
+                    <thead class="table-success text-nowrap">
                         <tr>
-                            <td>{{ $sap['codigo_colegial'] }}</td>
-                            <td>{{ $sap['no_identificacion'] }}</td>
-                            <td class="text-start">{{ $sap['nombre'] }}</td>
-                            <td class="text-end">{{ number_format((float)$sap['total_retenido'], 2) }}</td>
-                            <td class="text-end">{{ number_format((float)$sap['total_pagado'], 2) }}</td>
-                            <td class="text-end fw-bold {{ $sap['remanente'] > 0 ? 'text-danger' : 'text-success' }}">
-                                {{ number_format((float)$sap['remanente'], 2) }}
-                            </td>
+                            <th>#</th>
+                            @foreach($columnasActivasSifco as $colKey => $colTitle)
+                                <th>{{ $colTitle }}</th>
+                            @endforeach
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="text-muted">No hay registros de Insumos SAP generados.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach($sifcoInsumos as $index => $sifco)
+                            @php
+                                $dniSifco = trim($sifco['no_identificacion'] ?? '');
+                                $nombreSifco = trim($sifco['cuenta_nombre'] ?? '');
+                                $productoVal = trim($sifco['producto'] ?? '');
+                                $productoLower = strtolower($productoVal);
+                            @endphp
+                            <tr data-producto="{{ $productoLower }}">
+                                <td class="text-nowrap text-muted row-index">{{ $index + 1 }}</td>
+                                @foreach($columnasActivasSifco as $colKey => $colTitle)
+                                    @php
+                                        $valCol = $sifco[$colKey] ?? '';
+                                        $esMonto = in_array($colKey, ['valor_a_pagar', 'valor_real_pago']);
+                                    @endphp
+                                    @if($colKey === 'no_identificacion')
+                                        <td class="text-nowrap dni-cell font-monospace">{{ $valCol }}</td>
+                                    @elseif($colKey === 'cuenta_nombre')
+                                        <td class="text-start text-nowrap name-cell">{{ $valCol }}</td>
+                                    @elseif($colKey === 'producto')
+                                        <td class="text-start text-nowrap product-cell fw-bold">{{ $valCol }}</td>
+                                    @elseif($esMonto)
+                                        <td class="text-end text-nowrap fw-bold">{{ number_format((float)$valCol, 2) }}</td>
+                                    @else
+                                        <td class="text-nowrap {{ $colKey === 'cuenta_numero' ? 'fw-bold' : '' }}">{{ $valCol }}</td>
+                                    @endif
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- Paginación fija de exactamente 20 registros por página (sin texto "Mostrar:") -->
+        <div class="card-footer bg-light d-flex justify-content-between align-items-center flex-wrap py-2">
+            <div class="small text-muted" id="infoPaginacion">
+                Mostrando registros...
+            </div>
+            <nav aria-label="Navegación de Sifco Insumos">
+                <ul class="pagination pagination-sm mb-0" id="contenedorPaginacion">
+                    <!-- Dinámico por JS -->
+                </ul>
+            </nav>
         </div>
     </div>
-</div>
+
+    {{-- Script JavaScript con Paginación Fija de 20 y Filtrado --}}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const buscador = document.getElementById('buscadorSifco');
+            const filtroProd = document.getElementById('filtroProducto');
+            const tabla = document.getElementById('tablaSifcoInsumos');
+            const filasOriginales = Array.from(tabla.querySelectorAll('tbody tr'));
+            const contenedorPaginacion = document.getElementById('contenedorPaginacion');
+            const spanContador = document.getElementById('contadorRegistros');
+            const infoPaginacion = document.getElementById('infoPaginacion');
+
+            const registrosPorPaginaVal = 20; // Fijo a 20 registros por página
+            let paginaActual = 1;
+            let filasFiltradas = [...filasOriginales];
+
+            function actualizarTabla() {
+                let totalRegistros = filasFiltradas.length;
+                spanContador.textContent = totalRegistros;
+
+                filasOriginales.forEach(fila => fila.style.display = 'none');
+
+                let totalPaginas = Math.ceil(totalRegistros / registrosPorPaginaVal) || 1;
+                if (paginaActual > totalPaginas) paginaActual = totalPaginas;
+                if (paginaActual < 1) paginaActual = 1;
+
+                let inicio = (paginaActual - 1) * registrosPorPaginaVal;
+                let fin = Math.min(inicio + registrosPorPaginaVal, totalRegistros);
+
+                for (let i = inicio; i < fin; i++) {
+                    filasFiltradas[i].style.display = '';
+                }
+
+                if (totalRegistros === 0) {
+                    infoPaginacion.textContent = "No se encontraron registros coincidentes.";
+                } else {
+                    infoPaginacion.textContent = `Mostrando del ${inicio + 1} al ${fin} de un total de ${totalRegistros} registros`;
+                }
+
+                renderizarControlesPaginacion(totalPaginas);
+            }
+
+            function renderizarControlesPaginacion(totalPaginas) {
+                contenedorPaginacion.innerHTML = '';
+                if (totalPaginas <= 1) return;
+
+                let liAnterior = document.createElement('li');
+                liAnterior.className = `page-item ${paginaActual === 1 ? 'disabled' : ''}`;
+                liAnterior.innerHTML = `<a class="page-link" href="#" aria-label="Anterior">&laquo;</a>`;
+                liAnterior.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (paginaActual > 1) {
+                        paginaActual--;
+                        actualizarTabla();
+                    }
+                });
+                contenedorPaginacion.appendChild(liAnterior);
+
+                let inicioPag = Math.max(1, paginaActual - 2);
+                let finPag = Math.min(totalPaginas, inicioPag + 4);
+                if (finPag - inicioPag < 4) {
+                    inicioPag = Math.max(1, finPag - 4);
+                }
+
+                for (let i = inicioPag; i <= finPag; i++) {
+                    let liNum = document.createElement('li');
+                    liNum.className = `page-item ${i === paginaActual ? 'active' : ''}`;
+                    liNum.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                    liNum.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        paginaActual = i;
+                        actualizarTabla();
+                    });
+                    contenedorPaginacion.appendChild(liNum);
+                }
+
+                let liSiguiente = document.createElement('li');
+                liSiguiente.className = `page-item ${paginaActual === totalPaginas ? 'disabled' : ''}`;
+                liSiguiente.innerHTML = `<a class="page-link" href="#" aria-label="Siguiente">&raquo;</a>`;
+                liSiguiente.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (paginaActual < totalPaginas) {
+                        paginaActual++;
+                        actualizarTabla();
+                    }
+                });
+                contenedorPaginacion.appendChild(liSiguiente);
+            }
+
+            function filtrarFilas() {
+                let textoBusqueda = buscador.value.toLowerCase().trim();
+                let productoSeleccionado = filtroProd.value.toLowerCase();
+
+                filasFiltradas = filasOriginales.filter(function(fila) {
+                    let dniCell = fila.querySelector('.dni-cell');
+                    let nameCell = fila.querySelector('.name-cell');
+                    
+                    let dni = dniCell ? dniCell.textContent.toLowerCase() : '';
+                    let nombre = nameCell ? nameCell.textContent.toLowerCase() : '';
+                    let productoFila = fila.getAttribute('data-producto') || '';
+
+                    let coincideTexto = dni.includes(textoBusqueda) || nombre.includes(textoBusqueda);
+                    let coincideProducto = !productoSeleccionado || productoFila.includes(productoSeleccionado);
+
+                    return coincideTexto && coincideProducto;
+                });
+
+                paginaActual = 1;
+                actualizarTabla();
+            }
+
+            if (buscador) buscador.addEventListener('input', filtrarFilas);
+            if (filtroProd) filtroProd.addEventListener('change', filtrarFilas);
+
+            actualizarTabla();
+        });
+    </script>
+@endif
+
+@if(session('insumos_sap') && count(session('insumos_sap')) > 0)
+    <!-- TABLA INSUMOS SAP (AZUL) -->
+    <div class="card shadow-sm border-0 mb-4 mt-4">
+        <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">
+                <i class="fas fa-calculator me-2"></i> Insumos SAP (Control de Remanentes y Saldos)
+            </h5>
+            <!-- CONTROLES DE FILTRO Y PAGINACIÓN LOCAL -->
+            <div class="d-flex align-items-center gap-2">
+                <select id="filtroPaginasSap" class="form-select form-select-sm w-auto">
+                    <option value="10">10 por pág.</option>
+                    <option value="25" selected>25 por pág.</option>
+                    <option value="50">50 por pág.</option>
+                    <option value="100">100 por pág.</option>
+                    <option value="all">Todos</option>
+                </select>
+                <input type="text" id="buscarSapInput" class="form-control form-control-sm" placeholder="Buscar por DNI o Nombre..." style="width: 220px;">
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive m-0">
+                <table id="tablaInsumosSap" class="table table-bordered table-striped table-hover align-middle text-center small mb-0">
+                    <thead class="table-primary text-nowrap">
+                        <tr>
+                            <th>Código Colegial</th>
+                            <th>No. Identificación</th>
+                            <th class="text-start">Nombre</th>
+                            <th>Total Retenido</th>
+                            <th>Total Pagado a Cuentas</th>
+                            <th>Remanente (Sobrante)</th>
+                            <th>Saldo Pendiente (Deuda)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(session('insumos_sap', []) as $sap)
+                            <tr class="fila-sap">
+                                <td class="text-nowrap">{{ $sap['codigo_colegial'] }}</td>
+                                <td class="text-nowrap dni-col">{{ $sap['no_identificacion'] }}</td>
+                                <td class="text-start text-nowrap nombre-col">{{ $sap['nombre'] }}</td>
+                                <td class="text-end text-nowrap">{{ number_format((float)$sap['total_retenido'], 2) }}</td>
+                                <td class="text-end text-nowrap">{{ number_format((float)$sap['total_pagado'], 2) }}</td>
+                                <!-- Remanente de Dinero -->
+                                <td class="text-end text-nowrap fw-bold {{ ($sap['remanente'] ?? 0) > 0 ? 'text-success' : 'text-muted' }}">
+                                    {{ number_format((float)($sap['remanente'] ?? 0), 2) }}
+                                </td>
+                                <!-- Saldo Pendiente de Préstamos -->
+                                <td class="text-end text-nowrap fw-bold {{ ($sap['saldo_pendiente'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
+                                    {{ number_format((float)($sap['saldo_pendiente'] ?? 0), 2) }}
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- PIE CON PAGINACIÓN BÁSICA JS -->
+        <div class="card-footer bg-light d-flex justify-content-between align-items-center py-2">
+            <small id="contadorRegistrosSap" class="text-muted">Mostrando registros</small>
+            <nav>
+                <ul class="pagination pagination-sm mb-0" id="paginacionSapContainer">
+                    <!-- Los botones de paginación se generan por JavaScript -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE FILTRADO Y PAGINACIÓN EN VIVO -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const inputBuscar = document.getElementById("buscarSapInput");
+            const selectPaginas = document.getElementById("filtroPaginasSap");
+            const tabla = document.getElementById("tablaInsumosSap");
+            const tbody = tabla.querySelector("tbody");
+            const filas = Array.from(tbody.querySelectorAll("tr.fila-sap"));
+            const contador = document.getElementById("contadorRegistrosSap");
+            const paginacionContainer = document.getElementById("paginacionSapContainer");
+
+            let paginaActual = 1;
+
+            function actualizarTabla() {
+                const textoFiltro = inputBuscar.value.toLowerCase().trim();
+                const filasFiltradas = filas.filter(fila => {
+                    const dni = fila.querySelector(".dni-col").textContent.toLowerCase();
+                    const nombre = fila.querySelector(".nombre-col").textContent.toLowerCase();
+                    return dni.includes(textoFiltro) || nombre.includes(textoFiltro);
+                });
+
+                const porPaginaValor = selectPaginas.value;
+                const porPagina = porPaginaValor === "all" ? filasFiltradas.length : parseInt(porPaginaValor);
+                const totalPaginas = Math.ceil(filasFiltradas.length / porPagina) || 1;
+
+                if (paginaActual > totalPaginas) paginaActual = 1;
+
+                // Ocultar todas las filas
+                filas.forEach(f => f.style.display = "none");
+
+                // Mostrar solo el rango de la página actual
+                const inicio = (paginaActual - 1) * porPagina;
+                const fin = inicio + porPagina;
+                const filasPagina = filasFiltradas.slice(inicio, fin);
+
+                filasPagina.forEach(f => f.style.display = "");
+
+                // Actualizar texto de conteo
+                contador.textContent = `Mostrando ${filasPagina.length} de ${filasFiltradas.length} registros filtrados (Total: ${filas.length})`;
+
+                // Generar botones de paginación
+                paginacionContainer.innerHTML = "";
+                if (porPaginaValor !== "all" && totalPaginas > 1) {
+                    for (let i = 1; i <= totalPaginas; i++) {
+                        const li = document.createElement("li");
+                        li.className = `page-item ${i === paginaActual ? "active" : ""}`;
+                        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                        li.addEventListener("click", function (e) {
+                            e.preventDefault();
+                            paginaActual = i;
+                            actualizarTabla();
+                        });
+                        paginacionContainer.appendChild(li);
+                    }
+                }
+            }
+
+            inputBuscar.addEventListener("input", () => { paginaActual = 1; actualizarTabla(); });
+            selectPaginas.addEventListener("change", () => { paginaActual = 1; actualizarTabla(); });
+
+            actualizarTabla();
+        });
+    </script>
+@endif
+
 @endsection
 @push('scripts')
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>

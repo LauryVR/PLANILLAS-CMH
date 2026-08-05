@@ -191,98 +191,127 @@ public function index()
             ->route('cuentas.index')
             ->with('success', 'Archivo de cuentas procesado correctamente.');
     }
-public function cargarRetenciones(Request $request)
-    {
-        $request->validate([
-            'archivo_retencion' => 'required|mimes:xlsx,xls,csv'
-        ]);
+ public function cargarRetenciones(Request $request)
+{
+    $request->validate([
+        'archivo_retencion' => 'required|mimes:xlsx,xls,csv'
+    ]);
 
-        $archivo = $request->file('archivo_retencion');
+    $archivo = $request->file('archivo_retencion');
 
-        try {
-            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
-            $sheet = $spreadsheet->getActiveSheet();
-            $filas = $sheet->toArray();
+    try {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
+        $sheet = $spreadsheet->getActiveSheet();
+        $filas = $sheet->toArray();
 
-            // Recuperamos las cuentas por cobrar actuales de la sesión para el cruce de nombres
-            $datosActuales = $request->session()->get('datos', []);
+        // Recuperamos las cuentas por cobrar actuales de la sesión para el cruce de nombres
+        $datosActuales = $request->session()->get('datos', []);
 
-            $mapaCuentasPorCobrar = [];
-            foreach ($datosActuales as $cuentaItem) {
-                $dniCuenta = trim($cuentaItem['dni'] ?? '');
-                $nombreCuenta = trim($cuentaItem['nombre'] ?? '');
-                if (!empty($dniCuenta)) {
-                    $mapaCuentasPorCobrar[$dniCuenta] = $nombreCuenta;
-                }
+        $mapaCuentasPorCobrar = [];
+        foreach ($datosActuales as $cuentaItem) {
+            $dniCuenta = trim($cuentaItem['dni'] ?? '');
+            $nombreCuenta = trim($cuentaItem['nombre'] ?? '');
+            if (!empty($dniCuenta)) {
+                $mapaCuentasPorCobrar[$dniCuenta] = $nombreCuenta;
+            }
+        }
+
+        $retenciones = [];
+        $erroresRetencion = [];
+        
+        // --- PASO EXTRA: Detectar DNIs duplicados en el archivo Excel antes de procesarlos ---
+        $conteoDnisEnArchivo = [];
+        for ($i = 1; $i < count($filas); $i++) {
+            $dniCrudo = trim($filas[$i][0] ?? '');
+            if (!empty($dniCrudo)) {
+                // Limpieza básica temporal para contar duplicados exactos
+                $dniLimpioTemp = is_numeric($dniCrudo) ? number_format((float)$dniCrudo, 0, '', '') : $dniCrudo;
+                if (strlen($dniLimpioTemp) === 12) { $dniLimpioTemp = '0' . $dniLimpioTemp; }
+                
+                $conteoDnisEnArchivo[$dniLimpioTemp] = ($conteoDnisEnArchivo[$dniLimpioTemp] ?? 0) + 1;
+            }
+        }
+
+        for ($i = 1; $i < count($filas); $i++) {
+            $fila = $filas[$i];
+            $numLinea = $i + 1;
+            
+            $dni = trim($fila[0] ?? '');
+            $nombreArchivoRetencion = trim($fila[1] ?? '');
+            $monto = trim($fila[2] ?? 0);
+
+            if (empty($dni) && empty($nombreArchivoRetencion)) {
+                continue;
             }
 
-            $retenciones = [];
-            $erroresRetencion = [];
+            $nombreFinal = $nombreArchivoRetencion;
+            $dniValido = $dni;
+            $tieneError = false;
+            $mensajeError = '';
 
-            for ($i = 1; $i < count($filas); $i++) {
-                $fila = $filas[$i];
-                $numLinea = $i + 1;
-                
-                $dni = trim($fila[0] ?? '');
-                $nombreArchivoRetencion = trim($fila[1] ?? '');
-                $monto = trim($fila[2] ?? 0);
+            // Limpieza y estandarización del DNI actual para validaciones
+            $dniLimpioCheck = is_numeric($dni) ? number_format((float)$dni, 0, '', '') : $dni;
+            if (strlen($dniLimpioCheck) === 12) { $dniLimpioCheck = '0' . $dniLimpioCheck; }
 
-                if (empty($dni) && empty($nombreArchivoRetencion)) {
-                    continue;
+            // 1. Validar si el DNI está repetido en el archivo
+            if (isset($conteoDnisEnArchivo[$dniLimpioCheck]) && $conteoDnisEnArchivo[$dniLimpioCheck] > 1) {
+                $tieneError = true;
+                $mensajeError = "El DNI '{$dniLimpioCheck}' está duplicado en el archivo de retención.";
+                $erroresRetencion[] = "Fila {$numLinea}: {$mensajeError}";
+            }
+
+            // 2. Buscar en la Base de Datos (Maestro)
+            $maestro = $this->buscarMaestroFlexible($dni);
+
+            if (!$maestro) {
+                $tieneError = true;
+                $mensajeError = empty($mensajeError) 
+                    ? "El DNI '{$dni}' no se encuentra registrado en el sistema." 
+                    : $mensajeError . " Además, no se encuentra registrado en el sistema.";
+                if (!in_array("Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.", $erroresRetencion)) {
+                    $erroresRetencion[] = "Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.";
                 }
+            } else {
+                $dniValido = $maestro->dni;
+                $nombreBd = trim($maestro->nombre ?? '');
 
-                $nombreFinal = $nombreArchivoRetencion;
-                $dniValido = $dni;
-                $tieneError = false;
-                $mensajeError = '';
-
-                $maestro = $this->buscarMaestroFlexible($dni);
-
-                if (!$maestro) {
-                    $tieneError = true;
-                    $mensajeError = "El DNI '{$dni}' no se encuentra registrado en el sistema.";
-                    $erroresRetencion[] = "Fila {$numLinea}: {$mensajeError}";
+                if (isset($mapaCuentasPorCobrar[$dniValido])) {
+                    $nombreCxC = $mapaCuentasPorCobrar[$dniValido];
+                    if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreCxC)) {
+                        $nombreFinal = $nombreCxC;
+                    }
                 } else {
-                    $dniValido = $maestro->dni;
-                    $nombreBd = trim($maestro->nombre ?? '');
-
-                    if (isset($mapaCuentasPorCobrar[$dniValido])) {
-                        $nombreCxC = $mapaCuentasPorCobrar[$dniValido];
-                        if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreCxC)) {
-                            $nombreFinal = $nombreCxC;
-                        }
-                    } else {
-                        if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreBd)) {
-                            $nombreFinal = $nombreBd;
-                        }
+                    if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreBd)) {
+                        $nombreFinal = $nombreBd;
                     }
                 }
-
-                $retenciones[] = [
-                    'linea' => $numLinea,
-                    'dni' => $dniValido,
-                    'nombre' => $nombreFinal,
-                    'monto' => $monto,
-                    'tiene_error' => $tieneError,
-                    'detalle_error' => $mensajeError
-                ];
             }
 
-            // Guardar solo las retenciones de forma independiente
-            $request->session()->put('retenciones_cargadas', $retenciones);
-
-            if (count($erroresRetencion) > 0) {
-                return back()
-                    ->with('errores_retencion_detalle', $erroresRetencion)
-                    ->with('error', 'Se encontraron errores en la planilla de retención. Por favor, revise las filas marcadas en rojo.');
-            }
-
-            return back()->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error al leer el archivo de retenciones: ' . $e->getMessage());
+            $retenciones[] = [
+                'linea' => $numLinea,
+                'dni' => $dniValido,
+                'nombre' => $nombreFinal,
+                'monto' => $monto,
+                'tiene_error' => $tieneError,
+                'detalle_error' => $mensajeError
+            ];
         }
+
+        // Guardar las retenciones en la sesión
+        $request->session()->put('retenciones_cargadas', $retenciones);
+
+        if (count($erroresRetencion) > 0) {
+            return back()
+                ->with('errores_retencion_detalle', $erroresRetencion)
+                ->with('error', 'Se encontraron errores (DNIS duplicados o no registrados) en la planilla. Revise las filas marcadas en rojo.');
+            }
+
+        return back()->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
+
+    } catch (\Exception $e) {
+        return back()->with('error', 'Error al leer el archivo de retenciones: ' . $e->getMessage());
     }
+}
     
     /**
      * Guarda masivamente en la BD los datos validados.
@@ -583,10 +612,13 @@ public function exportarExcelPorConcepto(Request $request)
         "Expires"             => "0"
     ]);
 }
-
-
 public function cargarEntesRetenedores(Request $request)
 {
+    // Comprueba si tienes datos previos cargados
+    if (empty(session('retenciones_cargadas')) || empty(session('datos'))) {
+        return back()->with('error', 'Faltan datos previos de retenciones o cuentas por cobrar en la sesión.');
+    }
+
     $request->validate([
         'archivo_entes' => 'required|mimes:xlsx,xls,csv'
     ]);
@@ -596,16 +628,29 @@ public function cargarEntesRetenedores(Request $request)
     try {
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
         $sheet = $spreadsheet->getActiveSheet();
+        $filas = $sheet->toArray();
         
         $entesRetenedores = [];
         $erroresEntes = [];
-        $highestRow = $sheet->getHighestRow();
-        
         $mapaDniEntesNuevos = [];
+        $conteoDnisEnArchivo = [];
 
-        for ($i = 2; $i <= $highestRow; $i++) {
-            $dniBruto = $sheet->getCell('A' . $i)->getValue();
+        // --- PASO 0: Detectar DNIs duplicados en el Excel antes de procesar ---
+        for ($i = 1; $i < count($filas); $i++) {
+            $dniBruto = trim($filas[$i][0] ?? '');
+            if (!empty($dniBruto)) {
+                $dniLimpioTemp = is_numeric($dniBruto) ? number_format((float)$dniBruto, 0, '', '') : $dniBruto;
+                if (strlen($dniLimpioTemp) === 12) { $dniLimpioTemp = '0' . $dniLimpioTemp; }
+                
+                $conteoDnisEnArchivo[$dniLimpioTemp] = ($conteoDnisEnArchivo[$dniLimpioTemp] ?? 0) + 1;
+            }
+        }
+
+        for ($i = 1; $i < count($filas); $i++) {
+            $fila = $filas[$i];
+            $numLinea = $i + 1;
             
+            $dniBruto = trim($fila[0] ?? '');
             if (empty($dniBruto)) {
                 continue;
             }
@@ -613,25 +658,29 @@ public function cargarEntesRetenedores(Request $request)
             if (is_numeric($dniBruto)) {
                 $dni = number_format((float)$dniBruto, 0, '', '');
             } else {
-                $dni = trim($dniBruto);
+                $dni = $dniBruto;
             }
 
             if (strlen($dni) === 12) {
                 $dni = '0' . $dni;
             }
 
-            $numLinea = $i;
             $tieneError = false;
             $mensajeError = '';
             $dniValido = $dni;
 
-            // 1. Validar DNI en la base de datos (Maestros)
+            if (isset($conteoDnisEnArchivo[$dni]) && $conteoDnisEnArchivo[$dni] > 1) {
+                $tieneError = true;
+                $mensajeError = "El DNI/Identidad '{$dni}' está duplicado en el archivo de Entes Retenedores.";
+                $erroresEntes[] = "Fila {$numLinea}: {$mensajeError}";
+            }
+
             $maestro = $this->buscarMaestroFlexible($dni);
 
             if (!$maestro) {
                 $tieneError = true;
-                $mensajeError = "El DNI/Identidad '{$dni}' no existe en Maestros.";
-                $erroresEntes[] = "Fila {$numLinea}: {$mensajeError}";
+                $mensajeError = empty($mensajeError) ? "El DNI/Identidad '{$dni}' no existe en Maestros." : $mensajeError;
+                $erroresEntes[] = "Fila {$numLinea}: El DNI/Identidad '{$dni}' no existe en Maestros.";
             } else {
                 $dniValido = trim($maestro->dni);
                 if (strlen($dniValido) === 12) {
@@ -642,44 +691,36 @@ public function cargarEntesRetenedores(Request $request)
             $mapaDniEntesNuevos[$dniValido] = true;
 
             $registroEnte = [
-                'linea'        => $numLinea,
-                'dni'          => $dniValido,
-                'cuota_cole'   => trim($sheet->getCell('B' . $i)->getValue() ?? 0),
-                'automatico'   => trim($sheet->getCell('C' . $i)->getValue() ?? 0),
-                'estudio'      => trim($sheet->getCell('D' . $i)->getValue() ?? 0),
-                'refinancia'   => trim($sheet->getCell('E' . $i)->getValue() ?? 0),
-                'readecuaci'   => trim($sheet->getCell('F' . $i)->getValue() ?? 0),
-                'personal'     => trim($sheet->getCell('G' . $i)->getValue() ?? 0),
-                'compra_deu'   => trim($sheet->getCell('H' . $i)->getValue() ?? 0),
-                'hipotecario'  => trim($sheet->getCell('I' . $i)->getValue() ?? 0),
-                'vehiculo'     => trim($sheet->getCell('J' . $i)->getValue() ?? 0),
-                'tiene_error'  => $tieneError,
-                'detalle_error'=> $mensajeError
+                'linea'         => $numLinea,
+                'dni'           => $dniValido,
+                'cuota_cole'    => trim($fila[1] ?? 0),
+                'automatico'    => trim($fila[2] ?? 0),
+                'estudio'       => trim($fila[3] ?? 0),
+                'refinancia'    => trim($fila[4] ?? 0),
+                'readecuaci'    => trim($fila[5] ?? 0),
+                'personal'      => trim($fila[6] ?? 0),
+                'compra_deu'    => trim($fila[7] ?? 0),
+                'hipotecario'   => trim($fila[8] ?? 0),
+                'vehiculo'      => trim($fila[9] ?? 0),
+                'tiene_error'   => $tieneError,
+                'detalle_error' => $mensajeError
             ];
 
             $entesRetenedores[] = $registroEnte;
         }
 
-        // 2. Validación cruzada contra las retenciones cargadas previamente
         $retencionesActuales = $request->session()->get('retenciones_cargadas', []);
         $retencionesModificadas = [];
         $huboErrorRetencionPorEnte = false;
 
         foreach ($retencionesActuales as $retencion) {
             $dniRetencionBruto = trim($retencion['dni'] ?? '');
-            
-            if (is_numeric($dniRetencionBruto)) {
-                $dniRetencion = number_format((float)$dniRetencionBruto, 0, '', '');
-            } else {
-                $dniRetencion = $dniRetencionBruto;
-            }
-            if (strlen($dniRetencion) === 12) {
-                $dniRetencion = '0' . $dniRetencion;
-            }
+            $dniRetencion = is_numeric($dniRetencionBruto) ? number_format((float)$dniRetencionBruto, 0, '', '') : $dniRetencionBruto;
+            if (strlen($dniRetencion) === 12) { $dniRetencion = '0' . $dniRetencion; }
 
             if (!empty($dniRetencion) && !isset($mapaDniEntesNuevos[$dniRetencion])) {
                 $retencion['tiene_error'] = true;
-                $retencion['detalle_error'] = "El DNI '{$dniRetencion}' no se encuentra en el archivo de Entes Retenedores cargado.";
+                $retencion['detalle_error'] = "El DNI '{$dniRetencion}' no se encuentra inmerso en el archivo de Entes Retenedores cargado.";
                 $huboErrorRetencionPorEnte = true;
             } else {
                 $retencion['tiene_error'] = false;
@@ -695,64 +736,114 @@ public function cargarEntesRetenedores(Request $request)
 
         $request->session()->put('entes_retenedores', $entesRetenedores);
 
-// =========================================================================
-        // 3. GENERACIÓN DE SIFCO INSOMOS CON DISTRIBUCIÓN POR PRIORIDADES
+        // =========================================================================
+        // 3. GENERACIÓN DE SIFCO INSUMOS CON FILTRADO ESTRICTO Y NOTIFICACIONES
         // =========================================================================
         $cuentasCobrar = session()->get('datos', []);
         $retencionesFinales = session()->get('retenciones_cargadas', []);
 
-        // Mapear el monto total de retención por DNI
         $mapaRetencionesMonto = [];
         foreach ($retencionesFinales as $ret) {
             $dniRet = trim($ret['dni'] ?? '');
-            if (is_numeric($dniRet)) {
-                $dniRet = number_format((float)$dniRet, 0, '', '');
-            }
-            if (strlen($dniRet) === 12) {
-                $dniRet = '0' . $dniRet;
-            }
+            if (is_numeric($dniRet)) { $dniRet = number_format((float)$dniRet, 0, '', ''); }
+            if (strlen($dniRet) === 12) { $dniRet = '0' . $dniRet; }
             $mapaRetencionesMonto[$dniRet] = (float)($ret['monto'] ?? 0);
         }
 
-        // Consultar las prioridades activas desde la base de datos (tabla prioridades_cuentas)
-        // Ordenadas de menor a mayor número de prioridad (1 es la más alta prioridad)
         $prioridadesDb = \DB::table('prioridades_cuentas')
             ->where('activo', 1)
             ->orderBy('prioridad', 'asc')
             ->get()
-            ->keyBy('tipo_cuenta_id'); // Indexamos por tipo_cuenta_id para consulta rápida
+            ->keyBy('tipo_cuenta_id');
 
-        // Agrupar las cuentas por cobrar por DNI
         $cuentasPorDni = [];
         foreach ($cuentasCobrar as $cxc) {
             $dniCxC = trim($cxc['dni'] ?? '');
-            if (is_numeric($dniCxC)) {
-                $dniCxC = number_format((float)$dniCxC, 0, '', '');
-            }
-            if (strlen($dniCxC) === 12) {
-                $dniCxC = '0' . $dniCxC;
-            }
+            if (is_numeric($dniCxC)) { $dniCxC = number_format((float)$dniCxC, 0, '', ''); }
+            if (strlen($dniCxC) === 12) { $dniCxC = '0' . $dniCxC; }
             $cuentasPorDni[$dniCxC][] = $cxc;
         }
 
-       $sifcoInsumos = [];
+        $mapaEntesPorDni = [];
+        foreach ($entesRetenedores as $ente) {
+            $mapaEntesPorDni[$ente['dni']] = $ente;
+        }
+
+        $mapaCamposEnte = [
+            1 => 'cuota_cole',
+            2 => 'automatico',
+            3 => 'estudio',
+            4 => 'refinancia',
+            5 => 'readecuaci',
+            6 => 'personal',
+            7 => 'compra_deu',
+            8 => 'hipotecario',
+            9 => 'vehiculo',
+        ];
+
+        $sifcoInsumos = [];
+        $notificacionesDescartes = []; // Arreglo para acumular las notificaciones de productos no activos
         $boletaAutomatica = date('n') . date('Y');
 
         foreach ($retencionesFinales as $ret) {
             $dniRet = trim($ret['dni'] ?? '');
-            if (is_numeric($dniRet)) {
-                $dniRet = number_format((float)$dniRet, 0, '', '');
-            }
-            if (strlen($dniRet) === 12) {
-                $dniRet = '0' . $dniRet;
-            }
+            if (is_numeric($dniRet)) { $dniRet = number_format((float)$dniRet, 0, '', ''); }
+            if (strlen($dniRet) === 12) { $dniRet = '0' . $dniRet; }
 
             if (isset($cuentasPorDni[$dniRet])) {
                 $misCuentas = $cuentasPorDni[$dniRet];
+                $enteRecord = $mapaEntesPorDni[$dniRet] ?? null;
+                
+                $maestroTemp = $this->buscarMaestroFlexible($dniRet);
+                $nombrePersona = $maestroTemp->nombre ?? ($misCuentas[0]['nombre'] ?? 'Afiliado');
+
+                // FILTRADO ESTRICTO + NOTIFICACIÓN
+                $misCuentas = array_filter($misCuentas, function($cuentaItem) use ($enteRecord, $mapaCamposEnte, $dniRet, $nombrePersona, &$notificacionesDescartes) {
+                    $valorConcepto = (float)($cuentaItem['valor_concepto'] ?? 0);
+                    if ($valorConcepto <= 0) {
+                        return false;
+                    }
+
+                    if ($enteRecord) {
+                        $tipoCuentaId = $cuentaItem['tipo_cuenta_id'] ?? ($cuentaItem['tipo_cuenta'] ?? 0);
+                        $nombreConcepto = strtolower($cuentaItem['cuenta_concepto'] ?? ($cuentaItem['concepto'] ?? ''));
+
+                        $campoEnte = $mapaCamposEnte[$tipoCuentaId] ?? null;
+
+                        // Respaldo por texto por si el ID numérico no viene informado en cuentas por cobrar
+                        if (!$campoEnte) {
+                            if (str_contains($nombreConcepto, 'colegial')) $campoEnte = 'cuota_cole';
+                            elseif (str_contains($nombreConcepto, 'automatic')) $campoEnte = 'automatico';
+                            elseif (str_contains($nombreConcepto, 'estudio')) $campoEnte = 'estudio';
+                            elseif (str_contains($nombreConcepto, 'refinancia')) $campoEnte = 'refinancia';
+                            elseif (str_contains($nombreConcepto, 'readecuaci')) $campoEnte = 'readecuaci';
+                            elseif (str_contains($nombreConcepto, 'personal')) $campoEnte = 'personal';
+                            elseif (str_contains($nombreConcepto, 'compra')) $campoEnte = 'compra_deu';
+                            elseif (str_contains($nombreConcepto, 'hipotecario')) $campoEnte = 'hipotecario';
+                            elseif (str_contains($nombreConcepto, 'vehiculo')) $campoEnte = 'vehiculo';
+                        }
+
+                        if ($campoEnte && isset($enteRecord[$campoEnte])) {
+                            $valorEnte = (float)$enteRecord[$campoEnte];
+                            if ($valorEnte <= 0) {
+                                // Registrar notificación clara para el usuario
+                                $productoTexto = strtoupper($cuentaItem['cuenta_concepto'] ?? ($cuentaItem['concepto'] ?? $campoEnte));
+                                $notificacionesDescartes[] = "Aviso: Al afiliado **{$nombrePersona}** (DNI: {$dniRet}) se le omitió el producto **{$productoTexto}** porque figura en 0.00 en el archivo de Entes Retenedores.";
+                                
+                                return false; // Se descarta
+                            }
+                        }
+                    }
+
+                    return true;
+                });
+
+                $misCuentas = array_values($misCuentas);
 
                 foreach ($misCuentas as &$cuentaItem) {
                     $tipoCuentaId = $cuentaItem['tipo_cuenta_id'] ?? ($cuentaItem['tipo_cuenta'] ?? 0);
                     $prioridadObj = $prioridadesDb[$tipoCuentaId] ?? null;
+                    
                     $cuentaItem['_prioridad'] = $prioridadObj ? (int)$prioridadObj->prioridad : 999;
                 }
                 unset($cuentaItem);
@@ -763,7 +854,6 @@ public function cargarEntesRetenedores(Request $request)
 
                 $maestro = $this->buscarMaestroFlexible($dniRet);
                 $codigoColegial = $maestro->no_colegiado ?? ($misCuentas[0]['no_colegiado'] ?? '');
-                $nombrePersona = $maestro->nombre ?? ($misCuentas[0]['nombre'] ?? '');
                 $montoDisponible = $mapaRetencionesMonto[$dniRet] ?? 0;
 
                 foreach ($misCuentas as $cxcMatch) {
@@ -775,7 +865,6 @@ public function cargarEntesRetenedores(Request $request)
                     $valorAPagarAsignado = min($montoDisponible, $valorConcepto);
 
                     if ($valorAPagarAsignado > 0) {
-                        // Capturamos el concepto de la cuenta (ej. CUOTA COLEGIA, AUTOMATICOS, etc.)
                         $conceptoCuenta = $cxcMatch['cuenta_concepto'] ?? ($cxcMatch['concepto'] ?? '');
 
                         $sifcoInsumos[] = [
@@ -786,7 +875,7 @@ public function cargarEntesRetenedores(Request $request)
                             'cuenta_referencia' => '', 
                             'cuenta_nombre'     => $nombrePersona, 
                             'no_identificacion' => $dniRet, 
-                            'producto'          => $conceptoCuenta, // Muestra el texto de la cuenta concepto aquí
+                            'producto'          => $conceptoCuenta, 
                             'valor_a_pagar'     => $valorConcepto, 
                             'valor_real_pago'   => $valorAPagarAsignado, 
                             'boleta'            => $boletaAutomatica 
@@ -799,13 +888,12 @@ public function cargarEntesRetenedores(Request $request)
         }
 
         $request->session()->put('sifco_insumos', $sifcoInsumos);
-        // =========================================================================
-// =========================================================================
-        // 4. GENERACIÓN DE INSUMOS SAP (Control de Remanentes / Diferencias)
+
+       // =========================================================================
+        // 4. GENERACIÓN DE INSUMOS SAP (Control de Remanentes y Saldos Pendientes)
         // =========================================================================
         $insumosSapAgrupados = [];
 
-        // Agrupamos la información a partir de los datos calculados en Sifco Insumos
         foreach ($sifcoInsumos as $item) {
             $dni = $item['no_identificacion'];
             
@@ -815,21 +903,19 @@ public function cargarEntesRetenedores(Request $request)
                     'nombre'            => $item['cuenta_nombre'],
                     'no_identificacion' => $dni,
                     'total_retenido'    => $mapaRetencionesMonto[$dni] ?? 0,
-                    'total_a_pagar'     => 0, // Suma de lo que sumaban sus cuentas originales
-                    'total_pagado'      => 0  // Suma de lo que se le logró pagar con la retención
+                    'total_a_pagar'     => 0,
+                    'total_pagado'      => 0
                 ];
             }
             
             $insumosSapAgrupados[$dni]['total_a_pagar'] += (float)$item['valor_a_pagar'];
-            $insumosSapAgrupados[$dni]['total_pagado']  += (float)$item['valor_real_pago'];
+            $insumosSapAgrupados[$dni]['total_pagado'] += (float)$item['valor_real_pago'];
         }
 
         $insumosSap = [];
         foreach ($insumosSapAgrupados as $d) {
-            // Si el total a pagar de sus cuentas es mayor a lo que se le retuvo/pagó, 
-            // hay una diferencia pendiente (remanente de deuda / faltante de cobro).
-            // O si prefieres ver lo que sobró/faltó: Total Retenido - Total Pagado (o Total a Pagar - Total Pagado)
-            $diferencia = $d['total_a_pagar'] - $d['total_pagado'];
+            $remanenteDinero = $d['total_retenido'] - $d['total_pagado']; // Lo que sobró de la retención (si es que sobró)
+            $saldoPendienteDeuda = $d['total_a_pagar'] - $d['total_pagado']; // Lo que el afiliado aún debe de sus préstamos ($3,564.00 en este caso)
 
             $insumosSap[] = [
                 'codigo_colegial'   => $d['codigo_colegial'],
@@ -837,21 +923,28 @@ public function cargarEntesRetenedores(Request $request)
                 'no_identificacion' => $d['no_identificacion'],
                 'total_retenido'    => $d['total_retenido'],
                 'total_pagado'      => $d['total_pagado'],
-                'remanente'         => $diferencia // Reflejará el faltante exacto si la retención no cubrió el total de sus cuentas
+                'remanente'         => $remanenteDinero,     // Dinero sobrante de la retención
+                'saldo_pendiente'   => $saldoPendienteDeuda  // Deuda insatisfecha de los préstamos
             ];
         }
 
         $request->session()->put('insumos_sap', $insumosSap);
         // =========================================================================
-        if (count($erroresEntes) > 0 || $huboErrorRetencionPorEnte) {
-            $mensajeFinalAlerta = 'Archivo de Entes Retenedores procesado, pero se encontraron inconsistencias';
-            if ($huboErrorRetencionPorEnte) {
-                $mensajeFinalAlerta .= ' (Hay registros en Retenciones cuyos DNI no figuran en este archivo de Entes Retenedores).';
-            }
-            return back()->with('error', $mensajeFinalAlerta);
+        // 5. RESPUESTA Y NOTIFICACIONES
+        // =========================================================================
+        $responseRedirect = back();
+
+        if (count($notificacionesDescartes) > 0) {
+            $responseRedirect->with('notificaciones_descartes', $notificacionesDescartes);
         }
 
-        return back()->with('success', 'Archivo del Motor de Entes Retenedores leído, validado y SIFCO Insumos generado correctamente.');
+        if (count($erroresEntes) > 0 || $huboErrorRetencionPorEnte) {
+            return $responseRedirect
+                ->with('errores_entes_detalle', $erroresEntes)
+                ->with('error', 'Archivo procesado con observaciones y filtros aplicados.');
+        }
+
+        return $responseRedirect->with('success', 'Entes retenedores procesados. Se filtraron los productos en 0.00 y se generaron las alertas correspondientes.');
 
     } catch (\Exception $e) {
         return back()->with('error', 'Error al leer el archivo de entes retenedores: ' . $e->getMessage());
