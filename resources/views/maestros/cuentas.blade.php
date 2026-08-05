@@ -29,7 +29,14 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
-
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Gestión de Cuentas y Retenciones</h2>
+    
+    {{-- Botón para reiniciar todo --}}
+   <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalReiniciar">
+        <i class="fas fa-trash-alt me-1"></i> Reiniciar / Cargar Nuevos Archivos
+    </button>
+</div>
     {{-- 1. Card Cargar Archivo --}}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-success text-white">
@@ -584,6 +591,31 @@
         </div>
     </div>
 @endif
+</div>
+
+<!-- Modal de Confirmación para Reiniciar -->
+<div class="modal fade" id="modalReiniciar" tabindex="-1" aria-labelledby="modalReiniciarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalReiniciarLabel">
+                    <i class="fas.fa-exclamation-triangle me-2"></i> Confirmar Reinicio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="fas fa-trash-alt fa-3x text-danger mb-3"></i>
+                <h5>¿Está seguro de querer limpiar todos los datos cargados?</h5>
+                <p class="text-muted mb-0">Esta acción eliminará todas las previsualizaciones actuales de cuentas, retenciones y entes retenedores.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="{{ route('cuentas.reiniciar') }}" class="btn btn-danger">
+                    <i class="fas fa-check me-1"></i> Sí, reiniciar todo
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 @push('scripts')

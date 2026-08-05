@@ -671,4 +671,22 @@ public function cargarEntesRetenedores(Request $request)
     }
 }
 
+
+public function reiniciarCarga(Request $request)
+{
+    // Elimina únicamente las variables de sesión relacionadas con las cargas
+    $request->session()->forget([
+        'datos',
+        'retenciones_cargadas',
+        'entes_retenedores',
+        'errores_excel',
+        'errores_retencion_detalle',
+        'errores_entes_detalle'
+    ]);
+
+    return redirect()
+        ->route('cuentas.index')
+        ->with('success', 'Se ha reiniciado la carga. Puede subir nuevos archivos.');
+}
+
 }

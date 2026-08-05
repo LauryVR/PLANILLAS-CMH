@@ -102,4 +102,7 @@ Route::post('/retenciones/cargar', [CuentaController::class, 'cargarRetenciones'
 
 
 Route::post('/cargar-entes-retenedores', [CuentaController::class, 'cargarEntesRetenedores'])->name('cargar.entes.retenedores');
+
+
+Route::get('/cuentas/reiniciar', [CuentaController::class, 'reiniciarCarga'])->name('cuentas.reiniciar');
 });
