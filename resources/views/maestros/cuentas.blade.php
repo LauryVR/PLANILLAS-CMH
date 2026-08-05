@@ -617,6 +617,96 @@
         </div>
     </div>
 </div>
+
+@if(session('sifco_insumos') && count(session('sifco_insumos')) > 0)
+    <div class="card shadow-sm border-0 mb-4 mt-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i> SIFCO INSUMOS ({{ count(session('sifco_insumos')) }} registros)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped align-middle text-center small">
+                   <thead>
+        <tr class="table-secondary">
+            <th>Ente Retenedor</th>
+            <th>Código Colegial</th>
+            <th>Codigo SIFCO</th>
+            <th>Cuenta Número</th>
+            <th>Cuenta Referencia</th>
+            <th>Cuenta Nombre</th>
+            <th>No. Identificación</th>
+            <th>Producto</th>
+            <th>Valor a Pagar</th>
+            <th>Valor Real Pago</th>
+            <th>Boleta</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach(session('sifco_insumos', []) as $sifco)
+            <tr>
+                <td>{{ $sifco['ente_retenedor'] }}</td>
+                <td>{{ $sifco['codigo_colegial'] }}</td>
+                <td>{{ $sifco['codigo_sifco'] }}</td>
+                <td class="fw-bold">{{ $sifco['cuenta_numero'] }}</td>
+                <td>{{ $sifco['cuenta_referencia'] }}</td>
+                <td class="text-start">{{ $sifco['cuenta_nombre'] }}</td>
+                <td>{{ $sifco['no_identificacion'] }}</td>
+                <td class="text-start">{{ $sifco['producto'] }}</td>
+                <td class="text-end">{{ number_format((float)$sifco['valor_a_pagar'], 2) }}</td>
+                <td class="text-end">{{ number_format((float)$sifco['valor_real_pago'], 2) }}</td>
+                <td>{{ $sifco['boleta'] }}</td>
+            </tr>
+        @endforeach
+    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+@endif
+
+
+<!-- TABLA INSUMOS SAP -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0">Insumos SAP (Control de Remanentes)</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped align-middle text-center">
+                <thead>
+                    <tr class="table-secondary">
+                        <th>Código Colegial</th>
+                        <th>No. Identificación</th>
+                        <th>Nombre</th>
+                        <th>Total Retenido</th>
+                        <th>Total Pagado a Cuentas</th>
+                        <th>Remanente</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse(session('insumos_sap', []) as $sap)
+                        <tr>
+                            <td>{{ $sap['codigo_colegial'] }}</td>
+                            <td>{{ $sap['no_identificacion'] }}</td>
+                            <td class="text-start">{{ $sap['nombre'] }}</td>
+                            <td class="text-end">{{ number_format((float)$sap['total_retenido'], 2) }}</td>
+                            <td class="text-end">{{ number_format((float)$sap['total_pagado'], 2) }}</td>
+                            <td class="text-end fw-bold {{ $sap['remanente'] > 0 ? 'text-danger' : 'text-success' }}">
+                                {{ number_format((float)$sap['remanente'], 2) }}
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="text-muted">No hay registros de Insumos SAP generados.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection
 @push('scripts')
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
