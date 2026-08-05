@@ -736,7 +736,16 @@
 
     <!-- TABLA SIFCO INSUMOS (LIMPIA SIN COLUMNA DE ALERTA) -->
     <div class="card shadow-sm border-0 mb-4 mt-4">
-        <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div class="mb-3 d-flex gap-2">
+    <a href="{{ route('exportar.sifco.todos') }}" class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel me-1"></i> Descargar Sifco Insumos (Todos)
+    </a>
+    <a href="{{ route('exportar.sifco.colegial') }}" class="btn btn-primary btn-sm">
+        <i class="fas fa-file-excel me-1"></i> Descargar Sifco Insumos (Cuota Colegial)
+    </a>
+</div>   
+    
+    <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
                 <i class="fas fa-table me-2"></i> SIFCO INSUMOS (<span id="contadorRegistros">{{ count($sifcoInsumos) }}</span> registros visibles)
             </h5>

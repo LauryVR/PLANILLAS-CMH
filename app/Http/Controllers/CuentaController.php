@@ -9,7 +9,6 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Models\Maestro;
 use Illuminate\Support\Facades\Log;
 
-
 class CuentaController extends Controller
 {
     /**
@@ -969,6 +968,93 @@ public function reiniciarCarga(Request $request)
         ->with('success', 'Se ha reiniciado la carga. Puede subir nuevos archivos.');
 }
 
+public function exportarSifcoTodos(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+    
+    // Filtrar para OMITIR los conceptos que contengan "COLEGIAL"
+    $filtrados = array_filter($sifcoInsumos, function($item) {
+        $producto = strtoupper($item['producto'] ?? '');
+        return !str_contains($producto, 'COLEGIAL');
+    });
 
+    return $this->generarExcelSifco(array_values($filtrados), 'Sifco_Insumos_Sin_Cuota_Colegial.xlsx');
+}
+
+public function exportarSifcoColegial(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+    
+    // Filtrar estrictamente solo los registros de Cuota Colegial
+    $filtrados = array_filter($sifcoInsumos, function($item) {
+        $producto = strtoupper($item['producto'] ?? '');
+        return str_contains($producto, 'COLEGIAL');
+    });
+
+    return $this->generarExcelSifco(array_values($filtrados), 'Sifco_Insumos_Cuota_Colegial.xlsx');
+}
+
+private function generarExcelSifco($datos, $nombreArchivo)
+{
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // Cabeceras exactas según tu requerimiento
+    $cabeceras = [
+        'Ente Retenedor', 
+        'Código Colegial', 
+        'Codigo SIFCO', 
+        'Cuenta Número', 
+        'Cuenta Referencia', 
+        'Cuenta Nombre', 
+        'No. Identificación', 
+        'Producto', 
+        'Valor a Pagar', 
+        'Valor Real Pago', 
+        'Boleta'
+    ];
+
+    $sheet->fromArray($cabeceras, NULL, 'A1');
+
+    // Mapear y escribir los datos manteniendo el orden estricto de las columnas
+    $filaInicio = 2;
+    foreach ($datos as $item) {
+        $rowdata = [
+            $item['ente_retenedor'] ?? '',
+            $item['codigo_colegial'] ?? '',
+            $item['codigo_sifco'] ?? '',
+            $item['cuenta_numero'] ?? '',
+            $item['cuenta_referencia'] ?? '',
+            $item['cuenta_nombre'] ?? '',
+            $item['no_identificacion'] ?? '',
+            $item['producto'] ?? '',
+            (float)($item['valor_a_pagar'] ?? 0),
+            (float)($item['valor_real_pago'] ?? 0),
+            $item['boleta'] ?? ''
+        ];
+        
+        $sheet->fromArray($rowdata, NULL, 'A' . $filaInicio);
+        
+        // Dar formato numérico a las columnas de valores económicos
+        $sheet->getStyle('I' . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('J' . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        
+        $filaInicio++;
+    }
+
+    // Autoajustar el ancho de las columnas para mayor prolijidad
+    foreach (range('A', 'K') as $columna) {
+        $sheet->getColumnDimension($columna)->setAutoSize(true);
+    }
+
+    // Descargar el archivo Excel directamente al navegador
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment-filename="' . $nombreArchivo . '"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
 
 }

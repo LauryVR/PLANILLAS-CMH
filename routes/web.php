@@ -105,4 +105,7 @@ Route::post('/cargar-entes-retenedores', [CuentaController::class, 'cargarEntesR
 
 
 Route::get('/cuentas/reiniciar', [CuentaController::class, 'reiniciarCarga'])->name('cuentas.reiniciar');
+
+Route::get('/exportar-sifco-todos', [CuentaController::class, 'exportarSifcoTodos'])->name('exportar.sifco.todos');
+Route::get('/exportar-sifco-colegial', [CuentaController::class, 'exportarSifcoColegial'])->name('exportar.sifco.colegial');
 });
