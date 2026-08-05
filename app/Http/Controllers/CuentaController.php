@@ -87,6 +87,15 @@ public function index()
         $worksheet   = $spreadsheet->getActiveSheet();
         $filas       = $worksheet->toArray();
 
+        // 1. Primer paso opcional: Detectar qué números de cuenta se repiten en todo el archivo de forma global
+        $conteoCuentas = [];
+        for ($i = 1; $i < count($filas); $i++) {
+            $ctaVal = trim($filas[$i][2] ?? '');
+            if (!empty($ctaVal)) {
+                $conteoCuentas[$ctaVal] = ($conteoCuentas[$ctaVal] ?? 0) + 1;
+            }
+        }
+
         $todosLosDatos = [];
         $erroresExcel  = [];
 
@@ -107,6 +116,9 @@ public function index()
             $concepto      = trim($fila[3] ?? '');
             $valorConcepto = trim($fila[4] ?? '');
 
+            // Bandera general de error para la fila
+            $tieneErrorRegistro = false;
+
             $registroActual = [
                 'linea'          => $numLinea,
                 'no_colegiado'   => 'N/A',
@@ -122,11 +134,20 @@ public function index()
             $mensajesError = [];
             $camposError   = [];
 
+            // 2. Validación de Cuenta duplicada en el archivo
+            if (!empty($cuenta) && isset($conteoCuentas[$cuenta]) && $conteoCuentas[$cuenta] > 1) {
+                $camposError[]   = 'Cuenta';
+                $mensajesError[] = "El número de cuenta '{$cuenta}' está repetido en el archivo.";
+                $tieneErrorRegistro = true;
+            }
+
+            // Validación de DNI en Maestros
             $maestro = $this->buscarMaestroFlexible($dni);
 
             if (!$maestro) {
                 $camposError[]   = 'Identidad';
                 $mensajesError[] = "La identidad/DNI '{$dni}' no existe en Maestros.";
+                $tieneErrorRegistro = true;
             } else {
                 $registroActual['dni']          = $maestro->dni;
                 $registroActual['no_colegiado'] = $maestro->no_colegiado ?? 'N/A';
@@ -136,14 +157,18 @@ public function index()
                 if (strtolower($nombreMaestro) !== strtolower($nombre)) {
                     $camposError[]   = 'Nombre';
                     $mensajesError[] = "El nombre '{$nombre}' no coincide con '{$nombreMaestro}'";
+                    $tieneErrorRegistro = true;
                 }
             }
+
+            // Actualizamos la propiedad 'tiene_error' en el arreglo del registro
+            $registroActual['tiene_error'] = $tieneErrorRegistro;
 
             if (!empty($mensajesError)) {
                 $erroresExcel[] = [
                     'linea'    => $numLinea,
                     'campos'   => implode(', ', $camposError),
-                    'valores'  => "DNI: {$dni} | Nombre: {$nombre}",
+                    'valores'  => "DNI: {$dni} | Cuenta: {$cuenta} | Nombre: {$nombre}",
                     'mensajes' => $mensajesError
                 ];
             }
@@ -166,7 +191,6 @@ public function index()
             ->route('cuentas.index')
             ->with('success', 'Archivo de cuentas procesado correctamente.');
     }
-
 public function cargarRetenciones(Request $request)
     {
         $request->validate([
