@@ -8,8 +8,12 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use App\Models\Maestro;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
+use Illuminate\Support\Facades\Auth;
 class CuentaController extends Controller
+
+
 {
     /**
      * Muestra la vista principal.
@@ -1057,4 +1061,68 @@ private function generarExcelSifco($datos, $nombreArchivo)
     exit;
 }
 
+
+public function exportarSifcoPdf(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+
+    // Puedes pasarle datos adicionales como la fecha actual
+    $data = [
+        'insumos' => $sifcoInsumos,
+        'fecha' => date('d/m/Y H:i:s')
+    ];
+
+    // Cargar la vista 'pdf.sifco_insumos' y configurar el tamaño en orientación horizontal (landscape)
+    $pdf = Pdf::loadView('pdf.sifco_insumos', $data)
+              ->setPaper('letter', 'landscape');
+
+    // Descargar o mostrar directamente en el navegador
+    return $pdf->download('Reporte_Sifco_Insumos_' . date('Y_m_d') . '.pdf');
+}
+
+
+public function exportarPdfColegial(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+    
+    // Filtrar estrictamente solo Cuota Colegial
+    $filtrados = array_filter($sifcoInsumos, function($item) {
+        $producto = strtoupper($item['producto'] ?? '');
+        return str_contains($producto, 'COLEGIAL');
+    });
+
+    return $this->generarPdfConEstructura(array_values($filtrados), 'REPORTE SIFCO INSUMOS - CUOTA COLEGIAL');
+}
+
+public function exportarPdfPrestamos(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+    
+    // Filtrar para omitir Cuota Colegial (dejando solo préstamos)
+    $filtrados = array_filter($sifcoInsumos, function($item) {
+        $producto = strtoupper($item['producto'] ?? '');
+        return !str_contains($producto, 'COLEGIAL');
+    });
+
+    return $this->generarPdfConEstructura(array_values($filtrados), 'REPORTE SIFCO INSUMOS - PRÉSTAMOS');
+}
+
+private function generarPdfConEstructura($insumos, $tituloReporte)
+{
+    $usuarioActual = Auth::user();
+    
+    $data = [
+        'insumos' => $insumos,
+        'tituloReporte' => $tituloReporte,
+        'usuario' => $usuarioActual ? $usuarioActual->name . ' (' . $usuarioActual->email . ')' : 'Sistema / Invitado',
+        'fecha' => date('d/m/Y H:i:s')
+    ];
+
+    $pdf = Pdf::loadView('pdf.sifco_insumos', $data)
+              ->setPaper('letter', 'landscape');
+
+    $nombreArchivo = str_replace(' ', '_', strtoupper($tituloReporte)) . '_' . date('Y_m_d') . '.pdf';
+
+    return $pdf->download($nombreArchivo);
+}
 }

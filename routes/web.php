@@ -108,4 +108,8 @@ Route::get('/cuentas/reiniciar', [CuentaController::class, 'reiniciarCarga'])->n
 
 Route::get('/exportar-sifco-todos', [CuentaController::class, 'exportarSifcoTodos'])->name('exportar.sifco.todos');
 Route::get('/exportar-sifco-colegial', [CuentaController::class, 'exportarSifcoColegial'])->name('exportar.sifco.colegial');
+
+Route::get('/exportar-sifco-pdf', [CuentaController::class, 'exportarSifcoPdf'])->name('exportar.sifco.pdf');
+Route::get('/exportar-sifco-pdf-colegial', [CuentaController::class, 'exportarPdfColegial'])->name('exportar.sifco.pdf.colegial');
+Route::get('/exportar-sifco-pdf-prestamos', [CuentaController::class, 'exportarPdfPrestamos'])->name('exportar.sifco.pdf.prestamos');
 });

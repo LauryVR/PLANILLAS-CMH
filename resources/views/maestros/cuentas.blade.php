@@ -737,12 +737,25 @@
     <!-- TABLA SIFCO INSUMOS (LIMPIA SIN COLUMNA DE ALERTA) -->
     <div class="card shadow-sm border-0 mb-4 mt-4">
     <div class="mb-3 d-flex gap-2">
+    
+
+  <div class="mb-3 d-flex gap-2 flex-wrap">
+    <!-- Botones de Excel previos -->
     <a href="{{ route('exportar.sifco.todos') }}" class="btn btn-success btn-sm">
-        <i class="fas fa-file-excel me-1"></i> Descargar Sifco Insumos (Todos)
+        <i class="fas fa-file-excel me-1"></i> Excel (Préstamos)
     </a>
-    <a href="{{ route('exportar.sifco.colegial') }}" class="btn btn-primary btn-sm">
-        <i class="fas fa-file-excel me-1"></i> Descargar Sifco Insumos (Cuota Colegial)
+    <a href="{{ route('exportar.sifco.colegial') }}" class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel me-1"></i> Excel (Cuota Colegial)
     </a>
+
+    <!-- Nuevos Botones de PDF -->
+    <a href="{{ route('exportar.sifco.pdf.prestamos') }}" class="btn btn-danger btn-sm">
+        <i class="fas fa-file-pdf me-1"></i> PDF (Préstamos)
+    </a>
+    <a href="{{ route('exportar.sifco.pdf.colegial') }}" class="btn btn-danger btn-sm">
+        <i class="fas fa-file-pdf me-1"></i> PDF (Cuota Colegial)
+    </a>
+</div>
 </div>   
     
     <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
