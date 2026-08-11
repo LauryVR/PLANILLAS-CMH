@@ -14,6 +14,7 @@ class TipoCuenta extends Model
     protected $fillable = [
         'tipo_cuenta_id',
         'nombre',
+        'cuenta_sap',
         'activo',
     ];
 }

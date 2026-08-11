@@ -39,7 +39,7 @@
                 <div class="col-12 col-sm-6 col-md-5">
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-end-0 text-muted"><i class="fas fa-search"></i></span>
-                        <input type="text" name="buscar" class="form-control bg-light border-start-0" placeholder="Buscar por ID, Código o Nombre..." value="{{ $buscar }}">
+                        <input type="text" name="buscar" class="form-control bg-light border-start-0" placeholder="Buscar por ID, Código, Cuenta SAP o Nombre..." value="{{ $buscar }}">
                     </div>
                 </div>
 
@@ -69,14 +69,15 @@
         {{-- Tabla de Datos Responsive --}}
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" style="min-width: 650px;">
+                <table class="table table-hover align-middle mb-0" style="min-width: 750px;">
                     <thead class="table-dark">
                         <tr>
                             <th class="ps-3 text-center" style="width: 70px;">ID</th>
-                            <th class="text-center" style="width: 140px;">Código ID</th>
+                            <th class="text-center" style="width: 120px;">Código ID</th>
                             <th>Nombre</th>
-                            <th class="text-center" style="width: 120px;">Estado</th>
-                            <th class="text-center pe-3" style="width: 140px;">Acciones</th>
+                            <th class="text-center" style="width: 130px;">Cuenta SAP</th>
+                            <th class="text-center" style="width: 110px;">Estado</th>
+                            <th class="text-center pe-3" style="width: 130px;">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -89,6 +90,15 @@
                                     </span>
                                 </td>
                                 <td class="fw-bold text-dark fs-7">{{ $cuenta->nombre }}</td>
+                                <td class="text-center">
+                                    @if($cuenta->cuenta_sap)
+                                        <span class="badge bg-info-subtle text-info border border-info font-monospace px-2 py-1">
+                                            {{ $cuenta->cuenta_sap }}
+                                        </span>
+                                    @else
+                                        <span class="text-muted small fst-italic">N/D</span>
+                                    @endif
+                                </td>
                                 <td class="text-center">
                                     @if($cuenta->activo)
                                         <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
@@ -126,7 +136,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-muted">
+                                <td colspan="6" class="text-center py-5 text-muted">
                                     <i class="fas fa-search fa-2x mb-2 d-block opacity-50"></i>
                                     No se encontraron tipos de cuenta.
                                 </td>
@@ -174,6 +184,11 @@
                         <input type="text" class="form-control" id="nuevo_nombre" name="nombre" value="{{ old('nombre') }}" placeholder="Ej: VEHICULO DIRECTO" required>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="nuevo_cuenta_sap" class="form-label fw-bold">Cuenta SAP <span class="text-muted fw-normal small">(Opcional)</span></label>
+                        <input type="text" class="form-control font-monospace" id="nuevo_cuenta_sap" name="cuenta_sap" value="{{ old('cuenta_sap') }}" placeholder="Ej: 11020101">
+                    </div>
+
                     <div class="form-check form-switch mt-3">
                         <input class="form-check-input" type="checkbox" id="nuevo_activo" name="activo" value="1" checked>
                         <label class="form-check-label fw-bold" for="nuevo_activo">Registro Activo</label>
@@ -213,6 +228,11 @@
                         <div class="mb-3">
                             <label for="nombre_{{ $cuenta->id }}" class="form-label fw-bold">Nombre</label>
                             <input type="text" class="form-control" id="nombre_{{ $cuenta->id }}" name="nombre" value="{{ old('nombre', $cuenta->nombre) }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cuenta_sap_{{ $cuenta->id }}" class="form-label fw-bold">Cuenta SAP <span class="text-muted fw-normal small">(Opcional)</span></label>
+                            <input type="text" class="form-control font-monospace" id="cuenta_sap_{{ $cuenta->id }}" name="cuenta_sap" value="{{ old('cuenta_sap', $cuenta->cuenta_sap) }}" placeholder="Ej: 11020101">
                         </div>
 
                         <div class="form-check form-switch mt-3">

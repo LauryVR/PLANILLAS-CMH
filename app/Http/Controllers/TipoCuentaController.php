@@ -19,12 +19,13 @@ class TipoCuentaController extends Controller
             ->when($buscar, function ($query, $buscar) {
                 return $query->where('nombre', 'LIKE', "%{$buscar}%")
                              ->orWhere('tipo_cuenta_id', 'LIKE', "%{$buscar}%")
+                             ->orWhere('cuenta_sap', 'LIKE', "%{$buscar}%")
                              ->orWhere('id', 'LIKE', "%{$buscar}%");
             })
             ->when($estado !== null && $estado !== '', function ($query) use ($estado) {
                 return $query->where('activo', $estado);
             })
-            ->orderBy('id', 'asc') // Ordenar de 1 en adelante
+            ->orderBy('id', 'asc')
             ->paginate(10)
             ->appends($request->all());
 
@@ -39,6 +40,7 @@ class TipoCuentaController extends Controller
         $request->validate([
             'tipo_cuenta_id' => 'required|string|max:50|unique:tipos_cuenta,tipo_cuenta_id',
             'nombre'         => 'required|string|max:150|unique:tipos_cuenta,nombre',
+            'cuenta_sap'     => 'nullable|string|max:100',
         ], [
             'tipo_cuenta_id.unique' => 'El Tipo Cuenta ID ya existe.',
             'nombre.unique'         => 'El Nombre del tipo de cuenta ya existe.',
@@ -47,6 +49,7 @@ class TipoCuentaController extends Controller
         TipoCuenta::create([
             'tipo_cuenta_id' => $request->tipo_cuenta_id,
             'nombre'         => $request->nombre,
+            'cuenta_sap'     => $request->cuenta_sap,
             'activo'         => $request->has('activo') ? 1 : 0,
         ]);
 
@@ -64,11 +67,13 @@ class TipoCuentaController extends Controller
         $request->validate([
             'tipo_cuenta_id' => 'required|string|max:50|unique:tipos_cuenta,tipo_cuenta_id,' . $id,
             'nombre'         => 'required|string|max:150|unique:tipos_cuenta,nombre,' . $id,
+            'cuenta_sap'     => 'nullable|string|max:100',
         ]);
 
         $tipoCuenta->update([
             'tipo_cuenta_id' => $request->tipo_cuenta_id,
             'nombre'         => $request->nombre,
+            'cuenta_sap'     => $request->cuenta_sap,
             'activo'         => $request->has('activo') ? 1 : 0,
         ]);
 
