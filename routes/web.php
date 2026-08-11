@@ -9,6 +9,7 @@ use App\Http\Controllers\ConfiguracionController;
 use App\Http\Controllers\TipoCuentaController;
 use App\Http\Controllers\EnteRetencionController;
 use App\Http\Controllers\PrioridadCuentaController;
+use App\Http\Controllers\MotorRetencionController;
 
 // Redireccionar la raíz al login o a tu vista de inicio
 Route::get('/', function () {
@@ -112,4 +113,29 @@ Route::get('/exportar-sifco-colegial', [CuentaController::class, 'exportarSifcoC
 Route::get('/exportar-sifco-pdf', [CuentaController::class, 'exportarSifcoPdf'])->name('exportar.sifco.pdf');
 Route::get('/exportar-sifco-pdf-colegial', [CuentaController::class, 'exportarPdfColegial'])->name('exportar.sifco.pdf.colegial');
 Route::get('/exportar-sifco-pdf-prestamos', [CuentaController::class, 'exportarPdfPrestamos'])->name('exportar.sifco.pdf.prestamos');
+
+Route::get('/exportar-sap-remanente', [CuentaController::class, 'exportarSapRemanente'])->name('exportar.sap.remanente');
+
+Route::get('/exportar-sap-pdf-remanente', [CuentaController::class, 'exportarSapPdfRemanente'])->name('exportar.sap.pdf.remanente');
+Route::get('/exportar-reporte-general', [CuentaController::class, 'exportarReporteGeneral'])->name('exportar.reporte.general');
+
+
+// Ruta para la vista principal de motores
+Route::get('/motores', [MotorRetencionController::class, 'index'])->name('motores.index');
+
+// Ruta para procesar la importación (la que hicimos antes)
+Route::get('/motores/importar', [MotorRetencionController::class, 'showImportar'])->name('motor.importar.view');
+
+// Procesar el archivo enviado
+Route::post('/motores/importar', [MotorRetencionController::class, 'importar'])->name('motor.importar');
+Route::get('/motores/{motorId}/detalles-json', [MotorRetencionController::class, 'getDetallesJson']);
+Route::put('/motor-retencion/actualizar-masivo', [MotorRetencionController::class, 'actualizarMasivo'])->name('detalles.actualizar.masivo');
+Route::post('/motores/previsualizar', [MotorRetencionController::class, 'previsualizar'])->name('motor.previsualizar');
+
+Route::get('/motores/{id}/descargar', [MotorRetencionController::class, 'descargarExcel'])->name('motor.descargar');
+Route::get('/dashboard', function () {
+    return redirect()->route('inicio');
+})->name('dashboard');
+
+Route::post('/motores', [MotorRetencionController::class, 'store'])->name('motores.store');
 });

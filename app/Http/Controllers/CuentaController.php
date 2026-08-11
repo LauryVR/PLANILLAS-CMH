@@ -915,13 +915,17 @@ public function cargarEntesRetenedores(Request $request)
             $insumosSapAgrupados[$dni]['total_pagado'] += (float)$item['valor_real_pago'];
         }
 
-        $insumosSap = [];
+$insumosSap = [];
         foreach ($insumosSapAgrupados as $d) {
             $remanenteDinero = $d['total_retenido'] - $d['total_pagado']; // Lo que sobró de la retención (si es que sobró)
             $saldoPendienteDeuda = $d['total_a_pagar'] - $d['total_pagado']; // Lo que el afiliado aún debe de sus préstamos ($3,564.00 en este caso)
 
+            // Anteponer la letra 'C' evitando duplicarla en caso de que ya la contenga
+            $codigoLimpio = ltrim($d['codigo_colegial'] ?? '', 'C');
+            $codigoConC = 'C' . $codigoLimpio;
+
             $insumosSap[] = [
-                'codigo_colegial'   => $d['codigo_colegial'],
+                'codigo_colegial'   => $codigoConC,
                 'nombre'            => $d['nombre'],
                 'no_identificacion' => $d['no_identificacion'],
                 'total_retenido'    => $d['total_retenido'],
@@ -1124,5 +1128,232 @@ private function generarPdfConEstructura($insumos, $tituloReporte)
     $nombreArchivo = str_replace(' ', '_', strtoupper($tituloReporte)) . '_' . date('Y_m_d') . '.pdf';
 
     return $pdf->download($nombreArchivo);
+}
+
+public function exportarSapRemanente(Request $request)
+{
+    $insumosSap = session('insumos_sap', []);
+
+    // Filtrar para excluir los registros cuyo remanente sea 0 o menor
+    $insumosFiltrados = array_filter($insumosSap, function($item) {
+        $remanente = (float)($item['remanente'] ?? 0);
+        return $remanente > 0; // Solo conserva los que tengan remanente mayor a 0
+    });
+
+    // Si no quedan registros después del filtro, puedes retornar con un mensaje o dejarlo vacío
+    if (empty($insumosFiltrados)) {
+        return back()->with('error', 'No hay registros con remanente mayor a 0 para exportar.');
+    }
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // Cabeceras estrictas solicitadas
+    $cabeceras = [
+        'Código Colegial', 
+        'No. Identificación', 
+        'Nombre', 
+        'Remanente'
+    ];
+
+    $sheet->fromArray($cabeceras, NULL, 'A1');
+
+    $filaInicio = 2;
+    foreach ($insumosFiltrados as $item) {
+        $rowdata = [
+            $item['codigo_colegial'] ?? '',
+            $item['no_identificacion'] ?? '',
+            $item['nombre'] ?? '',
+            (float)($item['remanente'] ?? 0)
+        ];
+        
+        $sheet->fromArray($rowdata, NULL, 'A' . $filaInicio);
+        
+        // Dar formato numérico con dos decimales a la columna del remanente (Columna D)
+        $sheet->getStyle('D' . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        
+        $filaInicio++;
+    }
+
+    // Autoajustar el ancho de las columnas
+    foreach (range('A', 'D') as $columna) {
+        $sheet->getColumnDimension($columna)->setAutoSize(true);
+    }
+
+    // Descargar el archivo Excel
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="Control_Remanentes_SAP_' . date('Y_m_d') . '.xlsx"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+
+public function exportarSapPdfRemanente(Request $request)
+{
+    $insumosSap = session('insumos_sap', []);
+
+    // Filtrar para conservar únicamente los que tienen remanente mayor a 0
+    $insumosFiltrados = array_filter($insumosSap, function($item) {
+        $remanente = (float)($item['remanente'] ?? 0);
+        return $remanente > 0;
+    });
+
+    if (empty($insumosFiltrados)) {
+        return back()->with('error', 'No hay registros con remanente mayor a 0 para generar el reporte PDF.');
+    }
+
+    $usuarioActual = Auth::user();
+
+    $data = [
+        'insumos' => array_values($insumosFiltrados),
+        'tituloReporte' => 'REPORTE SAP - CONTROL DE REMANENTES ',
+        'usuario' => $usuarioActual ? $usuarioActual->name . ' (' . $usuarioActual->email . ')' : 'Sistema / Invitado',
+        'fecha' => date('d/m/Y H:i:s')
+    ];
+
+    // Generar PDF en orientación vertical (portrait) ya que son pocas columnas
+    $pdf = Pdf::loadView('pdf.sap_remanentes', $data)
+              ->setPaper('letter', 'portrait');
+
+    return $pdf->download('Reporte_Remanentes_SAP_' . date('Y_m_d') . '.pdf');
+}
+
+public function exportarReporteGeneral(Request $request)
+{
+    $sifcoInsumos = session('sifco_insumos', []);
+    $insumosSap = session('insumos_sap', []);
+
+    $mapaSap = [];
+    foreach ($insumosSap as $sap) {
+        $mapaSap[$sap['no_identificacion']] = $sap;
+    }
+
+    $conteoPorDni = [];
+    foreach ($sifcoInsumos as $item) {
+        $dni = $item['no_identificacion'];
+        $conteoPorDni[$dni] = ($conteoPorDni[$dni] ?? 0) + 1;
+    }
+
+    $filasVistas = [];
+    $reporteGeneral = [];
+    
+    foreach ($sifcoInsumos as $item) {
+        $dni = $item['no_identificacion'];
+        $sapData = $mapaSap[$dni] ?? [];
+
+        // Código colegial de Sifco (extraído correctamente de la data de Sifco)
+        $codigoSifcoColegial = $item['codigo_colegial'] ?? '';
+
+        // Código SAP con la 'C' al inicio
+        $codigoSapOriginal = $item['codigo_colegial'] ?? '';
+        $codigoSapConC = 'C' . ltrim($codigoSapOriginal, 'C');
+
+        $filasVistas[$dni] = ($filasVistas[$dni] ?? 0) + 1;
+        $esUltimaFilaDelAfiliado = ($filasVistas[$dni] == $conteoPorDni[$dni]);
+
+        $remanenteSap = '';
+        $saldoPendienteSifco = '';
+
+        if ($esUltimaFilaDelAfiliado) {
+            $remVal = (float)($sapData['remanente'] ?? 0);
+            $salVal = (float)($sapData['saldo_pendiente'] ?? 0);
+
+            if ($remVal > 0) {
+                $remanenteSap = $remVal;
+                $saldoPendienteSifco = ''; 
+            } elseif ($salVal > 0) {
+                $saldoPendienteSifco = $salVal;
+                $remanenteSap = '';
+            } else {
+                $remanenteSap = 0.00;
+                $saldoPendienteSifco = '';
+            }
+        }
+
+        $reporteGeneral[] = [
+            'codigo_sifco_colegial' => $codigoSifcoColegial,
+            'codigo_sap'            => $codigoSapConC,
+            'cuenta_numero'         => $item['cuenta_numero'] ?? '',
+            'no_identificacion'     => $dni,
+            'nombre'                => $item['cuenta_nombre'] ?? '',
+            'producto'              => $item['producto'] ?? '',
+            'valor_a_pagar'         => (float)($item['valor_a_pagar'] ?? 0),
+            'valor_real_pago'       => (float)($item['valor_real_pago'] ?? 0),
+            'remanente_sap'         => $remanenteSap,
+            'saldo_pendiente_sifco' => $saldoPendienteSifco,
+        ];
+    }
+
+    // Ordenar alfabéticamente por el nombre del afiliado
+    usort($reporteGeneral, function ($a, $b) {
+        return strcmp($a['nombre'], $b['nombre']);
+    });
+
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // Nuevas cabeceras solicitadas (sin Total Retenido)
+    $cabeceras = [
+        'Código Colegial',
+        'Código SAP',
+        'Cuenta Número',
+        'Identificación',
+        'Nombre',
+        'Producto',
+        'Valor a Pagar',
+        'Valor Real Pagado',
+        'Remanente SAP',
+        'Saldo Pendiente SIFCO'
+    ];
+
+    $sheet->fromArray($cabeceras, NULL, 'A1');
+
+    $filaInicio = 2;
+    foreach ($reporteGeneral as $row) {
+        $rowData = [
+            $row['codigo_sifco_colegial'],
+            $row['codigo_sap'],
+            $row['cuenta_numero'],
+            $row['no_identificacion'],
+            $row['nombre'],
+            $row['producto'],
+            $row['valor_a_pagar'],
+            $row['valor_real_pago'],
+            $row['remanente_sap'],
+            $row['saldo_pendiente_sifco'],
+        ];
+
+        $sheet->fromArray($rowData, NULL, 'A' . $filaInicio);
+
+        // Formato numérico para las columnas de dinero estándar (G y H)
+        foreach (['G', 'H'] as $col) {
+            $sheet->getStyle($col . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        }
+        
+        // Formato numérico condicional para Remanente SAP (Columna I) y Saldo Pendiente SIFCO (Columna J)
+        if ($row['remanente_sap'] !== '') {
+            $sheet->getStyle('I' . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        }
+        if ($row['saldo_pendiente_sifco'] !== '') {
+            $sheet->getStyle('J' . $filaInicio)->getNumberFormat()->setFormatCode('#,##0.00');
+        }
+
+        $filaInicio++;
+    }
+
+    // Autoajustar columnas de A hasta J
+    foreach (range('A', 'J') as $columna) {
+        $sheet->getColumnDimension($columna)->setAutoSize(true);
+    }
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment;filename="Reporte_General_Maestro_' . date('Y_m_d') . '.xlsx"');
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
 }
 }

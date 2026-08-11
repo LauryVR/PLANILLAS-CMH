@@ -951,8 +951,21 @@
 @endif
 
 @if(session('insumos_sap') && count(session('insumos_sap')) > 0)
+    <!-- BOTONES DE EXPORTACIÓN (Se muestran solo cuando hay datos de SAP) -->
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="{{ route('exportar.sap.remanente') }}" class="btn btn-warning btn-sm text-dark fw-bold">
+            <i class="fas fa-file-excel me-1"></i> Excel SAP (Remanentes)
+        </a>
+        <a href="{{ route('exportar.sap.pdf.remanente') }}" class="btn btn-danger btn-sm fw-bold">
+            <i class="fas fa-file-pdf me-1"></i> PDF SAP (Remanentes)
+        </a>
+        <a href="{{ route('exportar.reporte.general') }}" class="btn btn-dark btn-sm fw-bold">
+            <i class="fas fa-file-excel me-1"></i> Excel Reporte General (Maestro)
+        </a>
+    </div>
+
     <!-- TABLA INSUMOS SAP (AZUL) -->
-    <div class="card shadow-sm border-0 mb-4 mt-4">
+    <div class="card shadow-sm border-0 mb-4 mt-2">
         <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
                 <i class="fas fa-calculator me-2"></i> Insumos SAP (Control de Remanentes y Saldos)
@@ -975,12 +988,12 @@
                     <thead class="table-primary text-nowrap">
                         <tr>
                             <th>Código Colegial</th>
-                            <th>No. Identificación</th>
+                            <th>Identificación</th>
                             <th class="text-start">Nombre</th>
-                            <th>Total Retenido</th>
-                            <th>Total Pagado a Cuentas</th>
+                            <th>Retenido</th>
+                            <th>Pagado a Cuentas</th>
                             <th>Remanente (Sobrante)</th>
-                            <th>Saldo Pendiente (Deuda)</th>
+                            <th>Saldo Pendiente (Deuda) SIFCO</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1014,7 +1027,8 @@
                 </ul>
             </nav>
         </div>
-    </div>
+    </div>   
+
 
     <!-- SCRIPT DE FILTRADO Y PAGINACIÓN EN VIVO -->
     <script>

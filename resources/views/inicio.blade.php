@@ -105,7 +105,29 @@
                 </div>
             </div>
 
+
+{{-- Opción: Carga Masiva de Detalles del Motor --}}
+<div class="col-md-6 col-lg-4 col-xl mb-4">
+    <div class="card card-menu h-100 border-0 shadow-sm transition-all rounded-4">
+        <div class="card-body p-4 text-center d-flex flex-column align-items-center">
             
+            <div class="icon-shape rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px; background-color: rgba(13, 202, 240, 0.1); color: #0dcaf0;">
+                <i class="fas fa-file-excel fa-2x"></i>
+            </div>
+            
+            <h3 class="card-title fw-bold h5 mb-2">Entes Retenedores</h3>
+            <p class="card-text text-muted mb-4 small">
+                Importe mediante archivos Excel o CSV los registros y configuraciones detalladas para cada motor.
+            </p>
+            
+            <a href="{{ route('motor.importar.view') }}" class="btn fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm text-dark" style="background-color: #0dcaf0; border-color: #0dcaf0;">
+                <i class="fas fa-upload me-2"></i> Ir a Carga Masiva
+            </a>
+            
+        </div>
+    </div>
+</div>
+
 {{-- Card: Configuración del Sistema --}}
 <div class="col-md-6 col-lg-4 col-xl">
     <div class="card card-menu h-100 border-0 shadow-sm transition-all">
