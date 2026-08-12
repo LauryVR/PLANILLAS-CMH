@@ -27,6 +27,19 @@
         </div>
     @endif
 
+
+
+<!-- Mensajes de Error (La validación que agregamos en el controlador) -->
+@if ($errors->any())
+    <div style="background-color: #f8d7da; color: #721c24; padding: 15px; margin-bottom: 20px; border: 1px solid #f5c6cb; border-radius: 4px;">
+        <ul>
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
+
     <div class="row mb-4">
         {{-- Formulario de Carga --}}
         <div class="col-lg-6 mb-4 mb-lg-0">
@@ -89,13 +102,7 @@
             </div>
         </div>
     </div>
-   Para agregar la paginación a tu estructura actual sin tocar el script que ya tienes configurado para otra funcionalidad, solo necesitamos estructurar la vista HTML añadiendo el contenedor de paginación justo debajo de la tabla y envolver las filas iniciales de Blade para que el script las reconozca.
-
-Aquí tienes el código completo con la paginación integrada en el HTML y el bloque de scripts listo para manejar tanto los datos iniciales de Blade como los que cargues dinámicamente:
-
-1. HTML con el contenedor de paginación añadido
-HTML
-{{-- Sección de Visualización y Edición Estilo Excel por Motor --}}
+  {{-- Sección de Visualización y Edición Estilo Excel por Motor --}}
 <div class="card border-0 shadow-sm rounded-4">
     <div class="card-body p-4">
         <form action="{{ route('detalles.actualizar.masivo') }}" method="POST">
@@ -105,7 +112,7 @@ HTML
             <div class="row align-items-center mb-4">
                 <div class="col-md-5">
                     <h5 class="fw-bold mb-1"><i class="fas fa-table text-primary me-2"></i> Registros del Motor Seleccionado</h5>
-                    <p class="text-muted small mb-0">Modifique los valores numéricos directamente en la tabla y guarde los cambios abajo.</p>
+                    <p class="text-muted small mb-0">Modifique los valores (0 o 1) directamente en la tabla y guarde los cambios abajo.</p>
                 </div>
                 
                 {{-- Selector de Motor y Botón de Descarga --}}
@@ -143,6 +150,7 @@ HTML
                             <th>Compra Deuda</th>
                             <th>Hipoteca</th>
                             <th>Vehículo</th>
+                            <th class="text-center text-nowrap">Últ. Act.</th>
                         </tr>
                     </thead>
                     <tbody id="contenido-detalles">
@@ -155,20 +163,28 @@ HTML
                                 </td>
                                 <td>{{ $detalle->numero_colegiado }}</td>
                                 <td>{{ $detalle->colegiado_nombre }}</td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][cuota_colegial]" value="{{ $detalle->cuota_colegial }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][automaticos]" value="{{ $detalle->automaticos }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][estudio]" value="{{ $detalle->estudio }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][refinanciamiento]" value="{{ $detalle->refinanciamiento }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][readecuacion]" value="{{ $detalle->readecuacion }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][personal]" value="{{ $detalle->personal }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][compra_deuda]" value="{{ $detalle->compra_deuda }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][hipotecario]" value="{{ $detalle->hipotecario }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][vehiculo]" value="{{ $detalle->vehiculo }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][cuota_colegial]" value="{{ $detalle->cuota_colegial }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][automaticos]" value="{{ $detalle->automaticos }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][estudio]" value="{{ $detalle->estudio }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][refinanciamiento]" value="{{ $detalle->refinanciamiento }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][readecuacion]" value="{{ $detalle->readecuacion }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][personal]" value="{{ $detalle->personal }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][compra_deuda]" value="{{ $detalle->compra_deuda }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][hipotecario]" value="{{ $detalle->hipotecario }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[{{ $detalle->id }}][vehiculo]" value="{{ $detalle->vehiculo }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
+                                <td class="text-center text-nowrap">
+                                    <div class="small text-muted" style="font-size: 0.75rem;" title="Actualizado: {{ $detalle->updated_at }}">
+                                        {{ $detalle->updated_at ? \Carbon\Carbon::parse($detalle->updated_at)->format('d/m/Y H:i') : '-' }}
+                                    </div>
+                                    <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;" title="Actualizado por ID: {{ $detalle->updated_by ?? 'N/D' }}">
+                                        <i class="fas fa-user me-1"></i>{{ $detalle->updated_by ?? 'N/D' }}
+                                    </span>
+                                </td>
                             </tr>
                             @endforeach
                         @else
                             <tr>
-                                <td colspan="12" class="text-center text-muted py-5">
+                                <td colspan="13" class="text-center text-muted py-5">
                                     <i class="fas fa-search fa-2x text-light mb-2"></i>
                                     <p class="mb-0">Seleccione un motor en el filtro superior o previsualice un archivo para ver los registros.</p>
                                 </td>
@@ -199,6 +215,7 @@ HTML
         </form>
     </div>
 </div>
+
 @push('scripts')
 <script>
     // Control dinámico para el botón de descarga según el motor seleccionado
@@ -383,7 +400,7 @@ HTML
                 formData.append('motor_retencion_id', motorId);
                 formData.append('_token', '{{ csrf_token() }}');
 
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
                 fetch('{{ route("motor.previsualizar") }}', {
@@ -455,6 +472,10 @@ HTML
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td class="text-center text-nowrap">
+                                <div class="small text-muted" style="font-size: 0.75rem;">-</div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>N/D</span>
+                            </td>
                         `;
                         todosLosRegistrosHtml.push(tr);
                         contador++;
@@ -464,7 +485,7 @@ HTML
 
                     let btnProcesar = document.getElementById('btn-procesar');
                     if (contador === 0) {
-                        tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">No se encontraron registros válidos.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">No se encontraron registros válidos.</td></tr>`;
                         if (btnProcesar) btnProcesar.style.display = 'none';
                         if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
                         if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
@@ -489,7 +510,7 @@ HTML
                 })
                 .catch(error => {
                     console.error("Error en previsualización:", error);
-                    tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">Error al procesar: ${error.message}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Error al procesar: ${error.message}</td></tr>`;
                     mostrarNotificacion("Error de Lectura", error.message, true);
                 });
             });
@@ -506,13 +527,13 @@ HTML
 
                 if (!motorId) {
                     todosLosRegistrosHtml = [];
-                    tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-5"><i class="fas fa-search fa-2x text-light mb-2"></i><p class="mb-0">Seleccione un motor para ver registros.</p></td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-5"><i class="fas fa-search fa-2x text-light mb-2"></i><p class="mb-0">Seleccione un motor para ver registros.</p></td></tr>`;
                     if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
                     if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'inline-block';
                     return;
                 }
 
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
                 fetch(`/motores/${motorId}/detalles-json`)
@@ -522,7 +543,7 @@ HTML
                         paginaActual = 1;
 
                         if (data.length === 0) {
-                            tbody.innerHTML = `<tr><td colspan="12" class="text-center text-muted py-4">No hay registros asociados a este motor.</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">No hay registros asociados a este motor.</td></tr>`;
                             if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
                             return;
                         }
@@ -531,6 +552,19 @@ HTML
 
                         data.forEach(item => {
                             let tr = document.createElement('tr');
+                            
+                            // Formatear la fecha si existe
+                            let fechaFormateada = '-';
+                            if (item.updated_at) {
+                                let fecha = new Date(item.updated_at);
+                                let dia = String(fecha.getDate()).padStart(2, '0');
+                                let mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                                let anio = fecha.getFullYear();
+                                let horas = String(fecha.getHours()).padStart(2, '0');
+                                let minutos = String(fecha.getMinutes()).padStart(2, '0');
+                                fechaFormateada = `${dia}/${mes}/${anio} ${horas}:${minutos}`;
+                            }
+
                             tr.innerHTML = `
                                 <td>
                                     ${item.dni}
@@ -547,6 +581,10 @@ HTML
                                 <td><input type="number" name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                                <td class="text-center text-nowrap">
+                                    <div class="small text-muted" style="font-size: 0.75rem;">${fechaFormateada}</div>
+                                    <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>${item.updated_by ?? 'N/D'}</span>
+                                </td>
                             `;
                             todosLosRegistrosHtml.push(tr);
                         });
@@ -555,10 +593,27 @@ HTML
                     })
                     .catch(error => {
                         console.error("Error al cargar detalles:", error);
-                        tbody.innerHTML = `<tr><td colspan="12" class="text-center text-danger py-4">Error al cargar los registros.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Error al cargar los registros.</td></tr>`;
                     });
             });
         }
     });
 </script>
+
+
+@push('scripts')
+<style>
+    /* Ocultar flechas en inputs de tipo número (Chrome, Safari, Edge, Opera) */
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
+    /* Ocultar flechas en inputs de tipo número (Firefox) */
+    input[type=number] {
+        -moz-appearance: textfield;
+    }
+</style>
+@endpush
 @endpush

@@ -118,7 +118,7 @@ Route::get('/exportar-sap-remanente', [CuentaController::class, 'exportarSapRema
 
 Route::get('/exportar-sap-pdf-remanente', [CuentaController::class, 'exportarSapPdfRemanente'])->name('exportar.sap.pdf.remanente');
 Route::get('/exportar-reporte-general', [CuentaController::class, 'exportarReporteGeneral'])->name('exportar.reporte.general');
-
+Route::post('/cargar-entes-retenedores', [CuentaController::class, 'cargarEntesRetenedores'])->name('gestionar.motor.entes');
 
 // Ruta para la vista principal de motores
 Route::get('/motores', [MotorRetencionController::class, 'index'])->name('motores.index');

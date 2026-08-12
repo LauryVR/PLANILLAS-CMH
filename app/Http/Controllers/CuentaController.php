@@ -19,19 +19,50 @@ class CuentaController extends Controller
      * Muestra la vista principal.
      */
 public function index()
-    {
-        $tiposCuenta = DB::table('tipos_cuenta')
-                     ->where('activo', 1)
-                     ->orderBy('nombre', 'asc')
-                     ->get();
+{
+    $tiposCuenta = DB::table('tipos_cuenta')
+                 ->where('activo', 1)
+                 ->orderBy('nombre', 'asc')
+                 ->get();
 
-        // Recuperamos las tres sesiones de forma independiente
-        $datos = session('datos', []); 
-        $retenciones = session('retenciones_cargadas', []);
-        $entesRetenedores = session('entes_retenedores', []);
+    // Obtenemos los IDs únicos de motores que sí existen en tu tabla actual
+    $idsMotores = DB::table('detalle_motor_configs')
+                    ->select('motor_retencion_id')
+                    ->distinct()
+                    ->pluck('motor_retencion_id');
 
-        return view('maestros.cuentas', compact('tiposCuenta', 'datos', 'retenciones', 'entesRetenedores'));
+    // Diccionario para asociar cada ID con su respectivo nombre de institución
+    $nombresEntes = [
+        1 => 'Secretaría de Salud (SESAL)',
+        2 => 'Instituto Hondureño de Seguridad Social (IHSS)',
+        3 => 'Hospital Escuela',
+        4 => 'Hospital María',
+        5 => 'Ministerio Público',
+        6 => 'Universidad Autónoma de Honduras (UNAH)',
+        // Puedes agregar más números de ID según los que tengas registrados
+    ];
+
+    // Construimos la lista final con el ID y su nombre correspondiente
+    $motoresRetencion = [];
+    foreach ($idsMotores as $id) {
+        $motoresRetencion[] = (object)[
+            'motor_retencion_id' => $id,
+            'nombre' => $nombresEntes[$id] ?? "Ente / Motor General (ID: {$id})"
+        ];
     }
+
+    $datos = session('datos', []); 
+    $retenciones = session('retenciones_cargadas', []);
+    $entesRetenedores = session('entes_retenedores', []);
+
+    return view('maestros.cuentas', compact(
+        'tiposCuenta', 
+        'motoresRetencion', 
+        'datos', 
+        'retenciones', 
+        'entesRetenedores'
+    ));
+}
 
     /**
      * Busca un maestro en la BD de forma flexible para mitigar omisión de ceros por parte de Excel.
@@ -617,73 +648,70 @@ public function exportarExcelPorConcepto(Request $request)
 }
 public function cargarEntesRetenedores(Request $request)
 {
+    // Validar entrada del motor
+    $request->validate([
+        'motor_retencion_id' => 'required'
+    ]);
+
     // Comprueba si tienes datos previos cargados
     if (empty(session('retenciones_cargadas')) || empty(session('datos'))) {
         return back()->with('error', 'Faltan datos previos de retenciones o cuentas por cobrar en la sesión.');
     }
 
-    $request->validate([
-        'archivo_entes' => 'required|mimes:xlsx,xls,csv'
-    ]);
-
-    $archivo = $request->file('archivo_entes');
+    $motorRetencionId = $request->input('motor_retencion_id');
 
     try {
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
-        $sheet = $spreadsheet->getActiveSheet();
-        $filas = $sheet->toArray();
-        
+        // 1. Obtener configuraciones del motor directamente de BD
+        $detallesMotor = \DB::table('detalle_motor_configs')
+            ->where('motor_retencion_id', $motorRetencionId)
+            ->get();
+
+        if ($detallesMotor->isEmpty()) {
+            return back()->with('error', 'No se encontraron registros configurados para el motor seleccionado.');
+        }
+
         $entesRetenedores = [];
         $erroresEntes = [];
         $mapaDniEntesNuevos = [];
-        $conteoDnisEnArchivo = [];
+        $conteoDnisEnMotor = [];
 
-        // --- PASO 0: Detectar DNIs duplicados en el Excel antes de procesar ---
-        for ($i = 1; $i < count($filas); $i++) {
-            $dniBruto = trim($filas[$i][0] ?? '');
+        // Pre-procesar duplicados en motor con manejo seguro de ceros iniciales
+        foreach ($detallesMotor as $row) {
+            $dniBruto = trim($row->dni ?? '');
             if (!empty($dniBruto)) {
                 $dniLimpioTemp = is_numeric($dniBruto) ? number_format((float)$dniBruto, 0, '', '') : $dniBruto;
                 if (strlen($dniLimpioTemp) === 12) { $dniLimpioTemp = '0' . $dniLimpioTemp; }
                 
-                $conteoDnisEnArchivo[$dniLimpioTemp] = ($conteoDnisEnArchivo[$dniLimpioTemp] ?? 0) + 1;
+                $conteoDnisEnMotor[$dniLimpioTemp] = ($conteoDnisEnMotor[$dniLimpioTemp] ?? 0) + 1;
             }
         }
 
-        for ($i = 1; $i < count($filas); $i++) {
-            $fila = $filas[$i];
-            $numLinea = $i + 1;
+        // 2. Procesar registros de configuración
+        foreach ($detallesMotor as $index => $row) {
+            $numLinea = $index + 1;
+            $dniBruto = trim($row->dni ?? '');
             
-            $dniBruto = trim($fila[0] ?? '');
-            if (empty($dniBruto)) {
-                continue;
-            }
+            if (empty($dniBruto)) continue;
 
-            if (is_numeric($dniBruto)) {
-                $dni = number_format((float)$dniBruto, 0, '', '');
-            } else {
-                $dni = $dniBruto;
-            }
-
-            if (strlen($dni) === 12) {
-                $dni = '0' . $dni;
-            }
+            $dni = is_numeric($dniBruto) ? number_format((float)$dniBruto, 0, '', '') : $dniBruto;
+            if (strlen($dni) === 12) { $dni = '0' . $dni; }
 
             $tieneError = false;
             $mensajeError = '';
             $dniValido = $dni;
 
-            if (isset($conteoDnisEnArchivo[$dni]) && $conteoDnisEnArchivo[$dni] > 1) {
+            // Validaciones
+            if (($conteoDnisEnMotor[$dni] ?? 0) > 1) {
                 $tieneError = true;
-                $mensajeError = "El DNI/Identidad '{$dni}' está duplicado en el archivo de Entes Retenedores.";
-                $erroresEntes[] = "Fila {$numLinea}: {$mensajeError}";
+                $mensajeError = "El DNI/Identidad '{$dni}' está duplicado en la configuración de este motor.";
+                $erroresEntes[] = "Registro {$numLinea}: {$mensajeError}";
             }
 
             $maestro = $this->buscarMaestroFlexible($dni);
-
             if (!$maestro) {
                 $tieneError = true;
                 $mensajeError = empty($mensajeError) ? "El DNI/Identidad '{$dni}' no existe en Maestros." : $mensajeError;
-                $erroresEntes[] = "Fila {$numLinea}: El DNI/Identidad '{$dni}' no existe en Maestros.";
+                $erroresEntes[] = "Registro {$numLinea}: El DNI/Identidad '{$dni}' no existe en Maestros.";
             } else {
                 $dniValido = trim($maestro->dni);
                 if (strlen($dniValido) === 12) {
@@ -693,25 +721,26 @@ public function cargarEntesRetenedores(Request $request)
 
             $mapaDniEntesNuevos[$dniValido] = true;
 
-            $registroEnte = [
+            $enteData = [
                 'linea'         => $numLinea,
                 'dni'           => $dniValido,
-                'cuota_cole'    => trim($fila[1] ?? 0),
-                'automatico'    => trim($fila[2] ?? 0),
-                'estudio'       => trim($fila[3] ?? 0),
-                'refinancia'    => trim($fila[4] ?? 0),
-                'readecuaci'    => trim($fila[5] ?? 0),
-                'personal'      => trim($fila[6] ?? 0),
-                'compra_deu'    => trim($fila[7] ?? 0),
-                'hipotecario'   => trim($fila[8] ?? 0),
-                'vehiculo'      => trim($fila[9] ?? 0),
+                'cuota_cole'    => trim($row->cuota_colegial ?? 0),
+                'automatico'    => trim($row->automaticos ?? 0),
+                'estudio'       => trim($row->estudio ?? 0),
+                'refinancia'    => trim($row->refinanciamiento ?? 0),
+                'readecuaci'    => trim($row->readecuacion ?? 0),
+                'personal'      => trim($row->personal ?? 0),
+                'compra_deu'    => trim($row->compra_deuda ?? 0),
+                'hipotecario'   => trim($row->hipotecario ?? 0),
+                'vehiculo'      => trim($row->vehiculo ?? 0),
                 'tiene_error'   => $tieneError,
                 'detalle_error' => $mensajeError
             ];
 
-            $entesRetenedores[] = $registroEnte;
+            $entesRetenedores[] = $enteData;
         }
 
+        // Cruzar y marcar errores en retenciones cargadas
         $retencionesActuales = $request->session()->get('retenciones_cargadas', []);
         $retencionesModificadas = [];
         $huboErrorRetencionPorEnte = false;
@@ -723,7 +752,7 @@ public function cargarEntesRetenedores(Request $request)
 
             if (!empty($dniRetencion) && !isset($mapaDniEntesNuevos[$dniRetencion])) {
                 $retencion['tiene_error'] = true;
-                $retencion['detalle_error'] = "El DNI '{$dniRetencion}' no se encuentra inmerso en el archivo de Entes Retenedores cargado.";
+                $retencion['detalle_error'] = "El DNI '{$dniRetencion}' no se encuentra inmerso en el motor de retención seleccionado.";
                 $huboErrorRetencionPorEnte = true;
             } else {
                 $retencion['tiene_error'] = false;
@@ -785,7 +814,7 @@ public function cargarEntesRetenedores(Request $request)
         ];
 
         $sifcoInsumos = [];
-        $notificacionesDescartes = []; // Arreglo para acumular las notificaciones de productos no activos
+        $notificacionesDescartes = []; 
         $boletaAutomatica = date('n') . date('Y');
 
         foreach ($retencionesFinales as $ret) {
@@ -800,12 +829,9 @@ public function cargarEntesRetenedores(Request $request)
                 $maestroTemp = $this->buscarMaestroFlexible($dniRet);
                 $nombrePersona = $maestroTemp->nombre ?? ($misCuentas[0]['nombre'] ?? 'Afiliado');
 
-                // FILTRADO ESTRICTO + NOTIFICACIÓN
                 $misCuentas = array_filter($misCuentas, function($cuentaItem) use ($enteRecord, $mapaCamposEnte, $dniRet, $nombrePersona, &$notificacionesDescartes) {
                     $valorConcepto = (float)($cuentaItem['valor_concepto'] ?? 0);
-                    if ($valorConcepto <= 0) {
-                        return false;
-                    }
+                    if ($valorConcepto <= 0) return false;
 
                     if ($enteRecord) {
                         $tipoCuentaId = $cuentaItem['tipo_cuenta_id'] ?? ($cuentaItem['tipo_cuenta'] ?? 0);
@@ -813,7 +839,6 @@ public function cargarEntesRetenedores(Request $request)
 
                         $campoEnte = $mapaCamposEnte[$tipoCuentaId] ?? null;
 
-                        // Respaldo por texto por si el ID numérico no viene informado en cuentas por cobrar
                         if (!$campoEnte) {
                             if (str_contains($nombreConcepto, 'colegial')) $campoEnte = 'cuota_cole';
                             elseif (str_contains($nombreConcepto, 'automatic')) $campoEnte = 'automatico';
@@ -829,11 +854,9 @@ public function cargarEntesRetenedores(Request $request)
                         if ($campoEnte && isset($enteRecord[$campoEnte])) {
                             $valorEnte = (float)$enteRecord[$campoEnte];
                             if ($valorEnte <= 0) {
-                                // Registrar notificación clara para el usuario
                                 $productoTexto = strtoupper($cuentaItem['cuenta_concepto'] ?? ($cuentaItem['concepto'] ?? $campoEnte));
-                                $notificacionesDescartes[] = "Aviso: Al afiliado **{$nombrePersona}** (DNI: {$dniRet}) se le omitió el producto **{$productoTexto}** porque figura en 0.00 en el archivo de Entes Retenedores.";
-                                
-                                return false; // Se descarta
+                                $notificacionesDescartes[] = "Aviso: Al afiliado **{$nombrePersona}** (DNI: {$dniRet}) se le omitió el producto **{$productoTexto}** porque figura en 0.00 en la configuración del motor.";
+                                return false; 
                             }
                         }
                     }
@@ -846,30 +869,23 @@ public function cargarEntesRetenedores(Request $request)
                 foreach ($misCuentas as &$cuentaItem) {
                     $tipoCuentaId = $cuentaItem['tipo_cuenta_id'] ?? ($cuentaItem['tipo_cuenta'] ?? 0);
                     $prioridadObj = $prioridadesDb[$tipoCuentaId] ?? null;
-                    
                     $cuentaItem['_prioridad'] = $prioridadObj ? (int)$prioridadObj->prioridad : 999;
                 }
                 unset($cuentaItem);
 
-                usort($misCuentas, function($a, $b) {
-                    return $a['_prioridad'] <=> $b['_prioridad'];
-                });
+                usort($misCuentas, fn($a, $b) => $a['_prioridad'] <=> $b['_prioridad']);
 
                 $maestro = $this->buscarMaestroFlexible($dniRet);
                 $codigoColegial = $maestro->no_colegiado ?? ($misCuentas[0]['no_colegiado'] ?? '');
                 $montoDisponible = $mapaRetencionesMonto[$dniRet] ?? 0;
 
                 foreach ($misCuentas as $cxcMatch) {
-                    if ($montoDisponible <= 0) {
-                        break;
-                    }
+                    if ($montoDisponible <= 0) break;
 
                     $valorConcepto = (float)($cxcMatch['valor_concepto'] ?? 0);
                     $valorAPagarAsignado = min($montoDisponible, $valorConcepto);
 
                     if ($valorAPagarAsignado > 0) {
-                        $conceptoCuenta = $cxcMatch['cuenta_concepto'] ?? ($cxcMatch['concepto'] ?? '');
-
                         $sifcoInsumos[] = [
                             'ente_retenedor'    => '', 
                             'codigo_colegial'   => $codigoColegial, 
@@ -878,7 +894,7 @@ public function cargarEntesRetenedores(Request $request)
                             'cuenta_referencia' => '', 
                             'cuenta_nombre'     => $nombrePersona, 
                             'no_identificacion' => $dniRet, 
-                            'producto'          => $conceptoCuenta, 
+                            'producto'          => $cxcMatch['cuenta_concepto'] ?? ($cxcMatch['concepto'] ?? ''), 
                             'valor_a_pagar'     => $valorConcepto, 
                             'valor_real_pago'   => $valorAPagarAsignado, 
                             'boleta'            => $boletaAutomatica 
@@ -892,7 +908,7 @@ public function cargarEntesRetenedores(Request $request)
 
         $request->session()->put('sifco_insumos', $sifcoInsumos);
 
-       // =========================================================================
+        // =========================================================================
         // 4. GENERACIÓN DE INSUMOS SAP (Control de Remanentes y Saldos Pendientes)
         // =========================================================================
         $insumosSapAgrupados = [];
@@ -915,12 +931,11 @@ public function cargarEntesRetenedores(Request $request)
             $insumosSapAgrupados[$dni]['total_pagado'] += (float)$item['valor_real_pago'];
         }
 
-$insumosSap = [];
+        $insumosSap = [];
         foreach ($insumosSapAgrupados as $d) {
-            $remanenteDinero = $d['total_retenido'] - $d['total_pagado']; // Lo que sobró de la retención (si es que sobró)
-            $saldoPendienteDeuda = $d['total_a_pagar'] - $d['total_pagado']; // Lo que el afiliado aún debe de sus préstamos ($3,564.00 en este caso)
+            $remanenteDinero = $d['total_retenido'] - $d['total_pagado']; 
+            $saldoPendienteDeuda = $d['total_a_pagar'] - $d['total_pagado']; 
 
-            // Anteponer la letra 'C' evitando duplicarla en caso de que ya la contenga
             $codigoLimpio = ltrim($d['codigo_colegial'] ?? '', 'C');
             $codigoConC = 'C' . $codigoLimpio;
 
@@ -930,12 +945,13 @@ $insumosSap = [];
                 'no_identificacion' => $d['no_identificacion'],
                 'total_retenido'    => $d['total_retenido'],
                 'total_pagado'      => $d['total_pagado'],
-                'remanente'         => $remanenteDinero,     // Dinero sobrante de la retención
-                'saldo_pendiente'   => $saldoPendienteDeuda  // Deuda insatisfecha de los préstamos
+                'remanente'         => $remanenteDinero,     
+                'saldo_pendiente'   => $saldoPendienteDeuda  
             ];
         }
 
         $request->session()->put('insumos_sap', $insumosSap);
+
         // =========================================================================
         // 5. RESPUESTA Y NOTIFICACIONES
         // =========================================================================
@@ -948,15 +964,25 @@ $insumosSap = [];
         if (count($erroresEntes) > 0 || $huboErrorRetencionPorEnte) {
             return $responseRedirect
                 ->with('errores_entes_detalle', $erroresEntes)
-                ->with('error', 'Archivo procesado con observaciones y filtros aplicados.');
+                ->with('error', 'Motor procesado con observaciones y filtros aplicados.');
         }
 
-        return $responseRedirect->with('success', 'Entes retenedores procesados. Se filtraron los productos en 0.00 y se generaron las alertas correspondientes.');
+        return $responseRedirect->with('success', 'Motor de retención procesado correctamente desde la base de datos.');
 
     } catch (\Exception $e) {
-        return back()->with('error', 'Error al leer el archivo de entes retenedores: ' . $e->getMessage());
+        return back()->with('error', 'Error al procesar el motor de retención: ' . $e->getMessage());
     }
 }
+
+
+private function limpiarDni($dni) {
+    $dni = trim($dni);
+    if (is_numeric($dni)) {
+        $dni = number_format((float)$dni, 0, '', '');
+    }
+    return (strlen($dni) === 12) ? '0' . $dni : $dni;
+}
+
 
 public function reiniciarCarga(Request $request)
 {

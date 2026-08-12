@@ -23,5 +23,25 @@ protected $fillable = [
     'compra_deuda',
     'hipotecario',
     'vehiculo',
+    'updated_by',
 ];
+
+
+protected static function boot()
+{
+    parent::boot();
+
+    static::updating(function ($model) {
+        if (\Auth::check()) {
+            $model->updated_by = \Auth::id();
+        }
+    });
+}
+
+public function usuarioActualizador()
+{
+    return $this->belongsTo(\App\Models\User::class, 'updated_by');
+}
+
+
 }

@@ -102,31 +102,39 @@
             </form>
         </div>
     </div>
-
-{{-- 4. Formulario para Cargar Archivo de Entes Retenedores --}}
+{{-- 4. Formulario para Gestionar Motor de Entes Retenedores --}}
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-secondary text-white">
         <h5 class="mb-0">
-            <i class="fas fa-file-upload me-2"></i> Cargar Archivo Excel - Motor de Entes Retenedores
+            <i class="fas fa-cogs me-2"></i> Gestión de Motores de Cálculo por Ente
         </h5>
     </div>
     <div class="card-body">
-        <form action="{{ route('cargar.entes.retenedores') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('gestionar.motor.entes') }}" method="POST">
             @csrf
-            <div class="mb-3">
-                <label for="archivo_entes" class="form-label fw-bold">Seleccione el archivo Excel de Entes Retenedores (.xlsx / .xls)</label>
-                <div class="input-group">
-                    <input type="file" class="form-control" id="archivo_entes" name="archivo_entes" accept=".xlsx, .xls, .csv" required>
-                    <button type="submit" class="btn btn-secondary text-white">
-                        <i class="fas fa-cogs me-1"></i> Previsualizar Entes
+            
+            <div class="row align-items-end">
+                <div class="col-md-8">
+                    <label for="motor_retencion_id" class="form-label fw-bold">Seleccione el Motor de Retención</label>
+                   <select class="form-select" id="motor_retencion_id" name="motor_retencion_id" required>
+    <option value="" selected disabled>-- Seleccione una institución / ente --</option>
+    @foreach($motoresRetencion ?? [] as $motor)
+        <option value="{{ $motor->motor_retencion_id ?? $motor->id }}">
+            {{ $motor->nombre }}
+        </option>
+    @endforeach
+</select>
+                </div>
+
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-play me-1"></i> Ejecutar Motor
                     </button>
                 </div>
-                <div class="form-text">Asegúrese de que el archivo contenga las columnas de DNI y los valores de retención (cuotas, préstamos, etc.).</div>
             </div>
         </form>
     </div>
 </div>
-
     {{-- TABLA DE ERRORES DEL EXCEL --}}
     @if(!empty($filasConError) && count($filasConError) > 0)
 
@@ -542,24 +550,27 @@
             </div>
         </div>
 @endif
-
-
 {{-- 4. Tabla de Previsualización de Entes Retenedores Cargados --}}
 @if(session('entes_retenedores') && count(session('entes_retenedores')) > 0)
     @php
         $entesRetenedores = session('entes_retenedores');
 
         $columnasPosibles = [
-            'cuota_cole'  => 'Cuota Cole',
-            'automatico'  => 'Automático',
-            'estudio'     => 'Estudio',
-            'refinancia'  => 'Refinancia',
-            'readecuaci'  => 'Readecuaci',
-            'personal'    => 'Personal',
-            'compra_deu'  => 'Compra Deu',
-            'hipotecario' => 'Hipotecario',
-            'vehiculo'    => 'Vehículo'
+            'cuota_cole' => 'Cuota Cole', 'automatico' => 'Automático', 'estudio' => 'Estudio',
+            'refinancia' => 'Refinancia', 'readecuaci' => 'Readecuaci', 'personal' => 'Personal',
+            'compra_deu' => 'Compra Deu', 'hipotecario' => 'Hipotecario', 'vehiculo' => 'Vehículo'
         ];
+
+        // Determinar solo columnas con datos presentes
+        $columnasActivas = [];
+        foreach ($columnasPosibles as $key => $titulo) {
+            foreach ($entesRetenedores as $ente) {
+                if (floatval($ente[$key] ?? 0) > 0) {
+                    $columnasActivas[$key] = $titulo;
+                    break;
+                }
+            }
+        }
     @endphp
 
     <div class="card shadow-sm border-0 mb-4">
@@ -567,24 +578,21 @@
             <h5 class="mb-0">
                 <i class="fas fa-cogs me-2"></i> Motor de Entes Retenedores ({{ count($entesRetenedores) }} registros)
             </h5>
-            {{-- Barra de búsqueda rápida --}}
             <div class="input-group input-group-sm" style="max-width: 300px;">
                 <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
                 <input type="text" id="buscadorEntes" class="form-control" placeholder="Buscar por DNI...">
             </div>
         </div>
         <div class="card-body">
-
-            {{-- Alerta detallada si hay errores en entes retenedores --}}
             @if(session('errores_entes_detalle'))
                 <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Errores en Entes Retenedores</h5>
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> Errores encontrados</h5>
                     <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
                         @foreach(session('errores_entes_detalle') as $errEnte)
                             <li>{{ $errEnte }}</li>
                         @endforeach
                     </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
@@ -594,7 +602,7 @@
                         <tr>
                             <th>Fila</th>
                             <th>DNI</th>
-                            @foreach($columnasPosibles as $colKey => $colTitle)
+                            @foreach($columnasActivas as $colTitle)
                                 <th>{{ $colTitle }}</th>
                             @endforeach
                         </tr>
@@ -603,30 +611,22 @@
                         @foreach($entesRetenedores as $ente)
                             @php
                                 $dniBruto = trim($ente['dni'] ?? '');
-                                $dniLimpio = is_numeric($dniBruto) ? number_format((float)$dniBruto, 0, '', '') : $dniBruto;
-                                if (strlen($dniLimpio) === 12) {
-                                    $dniLimpio = '0' . $dniLimpio;
-                                }
                                 $tieneError = $ente['tiene_error'] ?? false;
                                 $numLinea = $ente['linea'] ?? '-';
-                                $detalleError = $ente['detalle_error'] ?? "Error en Fila {$numLinea}";
                             @endphp
-                            <tr class="{{ $tieneError ? 'table-danger fw-bold' : '' }}">
+                            <tr class="{{ $tieneError ? 'table-danger' : '' }}">
                                 <td class="text-nowrap">#{{ $numLinea }}</td>
                                 <td class="text-nowrap dni-cell font-monospace">
-                                    {{ $dniLimpio }}
+                                    {{ $dniBruto }}
                                     @if($tieneError)
-                                        <i class="fas fa-exclamation-circle text-danger ms-1" title="Fila {{ $numLinea }}: {{ $detalleError }}"></i>
-                                        <div class="small text-danger fw-normal">Fila {{ $numLinea }}: {{ $detalleError }}</div>
+                                        <i class="fas fa-exclamation-circle text-danger ms-1" title="{{ $ente['detalle_error'] ?? 'Error' }}"></i>
                                     @endif
                                 </td>
-                                @foreach($columnasPosibles as $colKey => $colTitle)
-                                    @php
-                                        $valCol = floatval($ente[$colKey] ?? 0);
-                                    @endphp
+                                @foreach($columnasActivas as $colKey => $colTitle)
+                                    @php $valCol = floatval($ente[$colKey] ?? 0); @endphp
                                     <td class="text-end">
                                         @if($valCol > 0)
-                                            <span class="text-success fw-bold">{{ number_format($valCol, 2) }}</span>
+                                            <span class="fw-bold text-success">{{ number_format($valCol, 2) }}</span>
                                         @else
                                             <span class="text-muted">0.00</span>
                                         @endif
@@ -640,20 +640,12 @@
         </div>
     </div>
 
-    {{-- Script JavaScript para la búsqueda instantánea en Entes Retenedores --}}
     <script>
         document.getElementById('buscadorEntes').addEventListener('keyup', function() {
             let filtro = this.value.toLowerCase();
-            let filas = document.querySelectorAll('#tablaEntesRetenedores tbody tr');
-
-            filas.forEach(function(fila) {
+            document.querySelectorAll('#tablaEntesRetenedores tbody tr').forEach(fila => {
                 let dni = fila.querySelector('.dni-cell').textContent.toLowerCase();
-
-                if (dni.includes(filtro)) {
-                    fila.style.display = '';
-                } else {
-                    fila.style.display = 'none';
-                }
+                fila.style.display = dni.includes(filtro) ? '' : 'none';
             });
         });
     </script>
@@ -664,7 +656,7 @@
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
                 <h5 class="modal-title" id="modalReiniciarLabel">
-                    <i class="fas.fa-exclamation-triangle me-2"></i> Confirmar Reinicio
+                    <i class="fas fa-exclamation-triangle me-2"></i> Confirmar Reinicio
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -683,8 +675,6 @@
     </div>
 </div>
 
-
-
 @if(session('notificaciones_descartes'))
     <div class="alert alert-warning alert-dismissible fade show" role="alert">
         <strong>Avisos de validación de Entes Retenedores:</strong>
@@ -697,12 +687,10 @@
     </div>
 @endif
 
-
 @if(session('sifco_insumos') && count(session('sifco_insumos')) > 0)
     @php
         $sifcoInsumos = session('sifco_insumos');
 
-        // Definir todas las columnas posibles de SIFCO Insumos
         $columnasPosiblesSifco = [
             'ente_retenedor'    => 'Ente Retenedor',
             'codigo_colegial'   => 'Código Colegial',
@@ -717,7 +705,6 @@
             'boleta'            => 'Boleta'
         ];
 
-        // Filtrar dinámicamente solo las columnas que tengan al menos un valor no vacío / distinto de cero
         $columnasActivasSifco = [];
         foreach ($columnasPosiblesSifco as $key => $titulo) {
             $tieneDatos = false;
@@ -734,35 +721,33 @@
         }
     @endphp
 
-    <!-- TABLA SIFCO INSUMOS (LIMPIA SIN COLUMNA DE ALERTA) -->
+    <!-- TABLA SIFCO INSUMOS -->
     <div class="card shadow-sm border-0 mb-4 mt-4">
-    <div class="mb-3 d-flex gap-2">
-    
+        <div class="card-body border-bottom pb-3">
+            <div class="d-flex gap-2 flex-wrap">
+                <!-- Botones de Excel previos -->
+                <a href="{{ route('exportar.sifco.todos') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel me-1"></i> Excel (Préstamos)
+                </a>
+                <a href="{{ route('exportar.sifco.colegial') }}" class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel me-1"></i> Excel (Cuota Colegial)
+                </a>
 
-  <div class="mb-3 d-flex gap-2 flex-wrap">
-    <!-- Botones de Excel previos -->
-    <a href="{{ route('exportar.sifco.todos') }}" class="btn btn-success btn-sm">
-        <i class="fas fa-file-excel me-1"></i> Excel (Préstamos)
-    </a>
-    <a href="{{ route('exportar.sifco.colegial') }}" class="btn btn-success btn-sm">
-        <i class="fas fa-file-excel me-1"></i> Excel (Cuota Colegial)
-    </a>
-
-    <!-- Nuevos Botones de PDF -->
-    <a href="{{ route('exportar.sifco.pdf.prestamos') }}" class="btn btn-danger btn-sm">
-        <i class="fas fa-file-pdf me-1"></i> PDF (Préstamos)
-    </a>
-    <a href="{{ route('exportar.sifco.pdf.colegial') }}" class="btn btn-danger btn-sm">
-        <i class="fas fa-file-pdf me-1"></i> PDF (Cuota Colegial)
-    </a>
-</div>
-</div>   
+                <!-- Nuevos Botones de PDF -->
+                <a href="{{ route('exportar.sifco.pdf.prestamos') }}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-file-pdf me-1"></i> PDF (Préstamos)
+                </a>
+                <a href="{{ route('exportar.sifco.pdf.colegial') }}" class="btn btn-danger btn-sm">
+                    <i class="fas fa-file-pdf me-1"></i> PDF (Cuota Colegial)
+                </a>
+            </div>
+        </div> 
     
-    <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="card-header bg-success bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h5 class="mb-0">
                 <i class="fas fa-table me-2"></i> SIFCO INSUMOS (<span id="contadorRegistros">{{ count($sifcoInsumos) }}</span> registros visibles)
             </h5>
-            {{-- Filtro de Cuota Colegial o Seleccionar Todo y Buscador --}}
+            
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <select id="filtroProducto" class="form-select form-select-sm" style="max-width: 210px;">
                     <option value="">-- Todos los conceptos --</option>
@@ -819,7 +804,7 @@
                 </table>
             </div>
         </div>
-        <!-- Paginación fija de exactamente 20 registros por página (sin texto "Mostrar:") -->
+        
         <div class="card-footer bg-light d-flex justify-content-between align-items-center flex-wrap py-2">
             <div class="small text-muted" id="infoPaginacion">
                 Mostrando registros...
@@ -832,7 +817,6 @@
         </div>
     </div>
 
-    {{-- Script JavaScript con Paginación Fija de 20 y Filtrado --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const buscador = document.getElementById('buscadorSifco');
@@ -843,7 +827,7 @@
             const spanContador = document.getElementById('contadorRegistros');
             const infoPaginacion = document.getElementById('infoPaginacion');
 
-            const registrosPorPaginaVal = 20; // Fijo a 20 registros por página
+            const registrosPorPaginaVal = 20; 
             let paginaActual = 1;
             let filasFiltradas = [...filasOriginales];
 

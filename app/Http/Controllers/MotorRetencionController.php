@@ -91,38 +91,39 @@ public function importar(Request $request)
                     ->whereNotIn('dni', $dnisEnArchivo)
                     ->delete();
 
-                // 3. SEGUNDA PASADA: Guardar o actualizar los registros que sí vienen en el Excel
-                foreach ($filas as $index => $row) {
-                    if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue;
+               // 3. SEGUNDA PASADA: Guardar o actualizar los registros que sí vienen en el Excel
+    foreach ($filas as $index => $row) {
+        if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue;
 
-                    $dni = trim($row[0] ?? '');
-                    if (empty($dni)) continue;
-                    if (strlen($dni) === 12) $dni = '0' . $dni;
+        $dni = trim($row[0] ?? '');
+        if (empty($dni)) continue;
+        if (strlen($dni) === 12) $dni = '0' . $dni;
 
-                    $maestro = Maestro::where('dni', $dni)->first();
-                    
-                    if (!$maestro) continue;
+        $maestro = Maestro::where('dni', $dni)->first();
+        
+        if (!$maestro) continue;
 
-                    DetalleMotorConfig::updateOrCreate(
-                        [
-                            'motor_retencion_id' => $motorId,
-                            'dni' => $dni
-                        ],
-                        [
-                            'colegiado_nombre'   => $maestro->nombre ?? 'N/A',
-                            'numero_colegiado'   => $maestro->no_colegiado ?? 'N/A', 
-                            'cuota_colegial'     => $row[1] ?? 0,
-                            'automaticos'        => $row[2] ?? 0,
-                            'estudio'            => $row[3] ?? 0,
-                            'refinanciamiento'   => $row[4] ?? 0,
-                            'readecuacion'       => $row[5] ?? 0,
-                            'personal'           => $row[6] ?? 0,
-                            'compra_deuda'       => $row[7] ?? 0,
-                            'hipotecario'        => $row[8] ?? 0,
-                            'vehiculo'           => $row[9] ?? 0,
-                        ]
-                    );
-                }
+        DetalleMotorConfig::updateOrCreate(
+            [
+                'motor_retencion_id' => $motorId,
+                'dni' => $dni
+            ],
+            [
+                'colegiado_nombre'   => $maestro->nombre ?? 'N/A',
+                'numero_colegiado'   => $maestro->no_colegiado ?? 'N/A', 
+                'cuota_colegial'     => $row[1] ?? 0,
+                'automaticos'        => $row[2] ?? 0,
+                'estudio'            => $row[3] ?? 0,
+                'refinanciamiento'   => $row[4] ?? 0,
+                'readecuacion'       => $row[5] ?? 0,
+                'personal'           => $row[6] ?? 0,
+                'compra_deuda'       => $row[7] ?? 0,
+                'hipotecario'        => $row[8] ?? 0,
+                'vehiculo'           => $row[9] ?? 0,
+                'updated_by'         => \Auth::id(), // <--- Agregado para registrar qué usuario hizo la importación
+            ]
+        );
+    }
             });
 
             return back()->with('success', 'Carga masiva procesada con éxito. Se actualizaron los registros y se eliminaron los ausentes en el archivo.');
@@ -240,11 +241,22 @@ public function previsualizar(Request $request)
     /**
      * Nuevo método para cargar datos mediante AJAX para la tabla
      */
-    public function getDetallesJson($motorId)
+   public function getDetallesJson($motorId)
     {
         $detalles = DetalleMotorConfig::where('motor_retencion_id', $motorId)->get();
 
         $resultados = $detalles->map(function ($item) {
+            $nombreUsuario = 'N/D';
+            
+            if (!empty($item->updated_by)) {
+                // Usamos la ruta completa del modelo para evitar errores de clases no importadas
+                $usuario = \App\Models\User::find($item->updated_by);
+                if ($usuario) {
+                    // Intenta obtener 'name' o 'nombre' dependiendo de cómo esté definida tu tabla users
+                    $nombreUsuario = $usuario->name ?? $usuario->nombre ?? 'N/D';
+                }
+            }
+
             return [
                 'id' => $item->id,
                 'dni' => $item->dni,
@@ -259,38 +271,64 @@ public function previsualizar(Request $request)
                 'compra_deuda' => $item->compra_deuda,
                 'hipotecario' => $item->hipotecario,
                 'vehiculo' => $item->vehiculo,
+                'updated_at' => $item->updated_at,
+                'updated_by' => $nombreUsuario,
             ];
         });
 
         return response()->json($resultados);
     }
-
     public function showImportar()
     {
         $motores = MotorRetencion::with('enteRetencion')->get();
         return view('motores.importar', compact('motores'));
     }
 
-    public function actualizarMasivo(Request $request)
+public function actualizarMasivo(Request $request)
 {
     $datosNuevos = $request->input('detalles', []);
+    
+    // Definimos las columnas que permitimos editar para mayor seguridad
+    $camposPermitidos = [
+        'cuota_colegial', 'automaticos', 'estudio', 'refinanciamiento', 
+        'readecuacion', 'personal', 'compra_deuda', 'hipotecario', 'vehiculo'
+    ];
 
+    // 1. Validar que los campos enviados sean estrictamente 0 o 1
+    foreach ($datosNuevos as $id => $valores) {
+        foreach ($valores as $columna => $valor) {
+            // Solo validamos si la columna está en nuestra lista de permitidos
+            if (in_array($columna, $camposPermitidos)) {
+                if (!in_array($valor, [0, '0', 1, '1'], true)) {
+                    return back()->withErrors([
+                        'error' => "El campo '{$columna}' para el registro ID {$id} solo acepta valores 0 o 1."
+                    ])->withInput();
+                }
+            }
+        }
+    }
+
+    // 2. Procesar la actualización SOLO de lo que realmente cambió
     foreach ($datosNuevos as $id => $valores) {
         $detalle = DetalleMotorConfig::find($id);
 
         if ($detalle) {
-            // Solo actualizamos los campos permitidos, protegiendo dni, nombre y número de colegiado
-            $detalle->update([
-                'cuota_colegial'   => $valores['cuota_colegial'] ?? 0,
-                'automaticos'      => $valores['automaticos'] ?? 0,
-                'estudio'          => $valores['estudio'] ?? 0,
-                'refinanciamiento' => $valores['refinanciamiento'] ?? 0,
-                'readecuacion'     => $valores['readecuacion'] ?? 0,
-                'personal'         => $valores['personal'] ?? 0,
-                'compra_deuda'     => $valores['compra_deuda'] ?? 0,
-                'hipotecario'      => $valores['hipotecario'] ?? 0,
-                'vehiculo'         => $valores['vehiculo'] ?? 0,
-            ]);
+            // Asignamos temporalmente los valores al modelo, pero aún NO guardamos
+            foreach ($valores as $columna => $valor) {
+                if (in_array($columna, $camposPermitidos)) {
+                    // Actualizamos la propiedad en el modelo
+                    $detalle->{$columna} = (int)$valor; 
+                }
+            }
+
+            // isDirty() pregunta: "¿Alguna de estas columnas es diferente a lo que ya está en la base de datos?"
+            if ($detalle->isDirty()) {
+                // Como SÍ hubo cambios, ahora sí actualizamos el usuario
+                $detalle->updated_by = \Auth::id();
+                
+                // save() es inteligente: genera un SQL UPDATE que SOLO incluye las columnas modificadas
+                $detalle->save();
+            }
         }
     }
 
