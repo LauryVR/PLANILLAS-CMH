@@ -7,6 +7,11 @@
             <h2 class="fw-bold mb-1 text-dark">Gestión de Motores de Retención</h2>
             <p class="text-muted small mb-0">Registre y vincule los motores de retención a sus entes retenedores correspondientes.</p>
         </div>
+        <div>
+            <a href="{{ route('configuracion.index') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-medium">
+                <i class="fas fa-arrow-left me-1"></i> Volver a Configuración
+            </a>
+        </div>
     </div>
 
     {{-- Alertas --}}
@@ -129,9 +134,25 @@
                                     </span>
                                 </td>
                                 <td class="text-end px-4">
-                                    <button type="button" class="btn btn-sm btn-light text-secondary rounded-circle p-2" title="Opciones">
-                                        <i class="fas fa-ellipsis-v"></i>
-                                    </button>
+                                    <div class="d-flex justify-content-end gap-2">
+                                        {{-- Botón para abrir Modal de Editar vía AJAX --}}
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-primary rounded-circle p-2 d-flex align-items-center justify-content-center" 
+                                                style="width: 32px; height: 32px;" 
+                                                title="Editar Motor"
+                                                onclick="loadEditModal('{{ $motor->id }}')">
+                                            <i class="fas fa-edit fa-xs"></i>
+                                        </button>
+                                        
+                                        {{-- Botón para abrir Modal de Inactivar / Activar --}}
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-{{ $motor->activo ? 'warning' : 'success' }} rounded-circle p-2 d-flex align-items-center justify-content-center" 
+                                                style="width: 32px; height: 32px;" 
+                                                title="{{ $motor->activo ? 'Inactivar Motor' : 'Activar Motor' }}"
+                                                onclick="openStatusModal('{{ $motor->id }}', '{{ addslashes($motor->nombre_motor) }}', '{{ $motor->activo }}')">
+                                            <i class="fas fa-power-off fa-xs"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -151,6 +172,71 @@
         </div>
     </div>
 </div>
+
+{{-- MODAL DE EDICIÓN --}}
+<div class="modal fade" id="editMotorModal" tabindex="-1" aria-labelledby="editMotorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <form id="editMotorForm" method="POST">
+                @csrf
+                @method('PUT')
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="editMotorModalLabel">
+                        <i class="fas fa-edit text-primary me-2"></i> Editar Motor de Retención
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label for="edit_ente_retencion_id" class="form-label fw-semibold small text-secondary">Ente Retenedor</label>
+                        <select name="ente_retencion_id" id="edit_ente_retencion_id" class="form-select" required>
+                            <option value="">-- Seleccione un Ente --</option>
+                            @foreach($entes as $ente)
+                                <option value="{{ $ente->id }}">{{ $ente->nombre }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="edit_nombre_motor" class="form-label fw-semibold small text-secondary">Nombre del Motor</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-cogs text-muted"></i></span>
+                            <input type="text" name="nombre_motor" id="edit_nombre_motor" class="form-control border-start-0 ps-0" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Actualizar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL DE INACTIVAR / ACTIVAR --}}
+<div class="modal fade" id="statusMotorModal" tabindex="-1" aria-labelledby="statusMotorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow rounded-4 text-center">
+            <form id="statusMotorForm" method="POST">
+                @csrf
+                @method('PATCH')
+                <div class="modal-body p-4">
+                    <div id="statusIconContainer" class="mb-3">
+                        <!-- Icono dinámico según el estado -->
+                    </div>
+                    <h5 class="fw-bold mb-2" id="statusModalTitle">Cambiar Estado</h5>
+                    <p class="text-muted small mb-4" id="statusModalMessage">¿Desea cambiar el estado del motor?</p>
+                    
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-3 btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" id="statusSubmitBtn" class="btn rounded-pill px-3 btn-sm fw-bold text-white">Sí, confirmar</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('styles')
@@ -159,4 +245,53 @@
     .card { border-radius: 1rem; }
     .table > :not(caption) > * > * { padding: 1rem 0.75rem; }
 </style>
+@endpush
+
+@push('scripts')
+<script>
+    function loadEditModal(id) {
+        fetch(`/motores/${id}/edit`)
+            .then(response => response.json())
+            .then(data => {
+                const form = document.getElementById('editMotorForm');
+                form.action = `/motores/${data.id}`;
+                
+                document.getElementById('edit_nombre_motor').value = data.nombre_motor;
+                document.getElementById('edit_ente_retencion_id').value = data.ente_retencion_id;
+                
+                var editModal = new bootstrap.Modal(document.getElementById('editMotorModal'));
+                editModal.show();
+            })
+            .catch(error => console.error('Error al cargar los datos:', error));
+    }
+
+    function openStatusModal(id, nombre, activo) {
+        const form = document.getElementById('statusMotorForm');
+        form.action = `/motores/${id}/status`; 
+        
+        const isActive = activo == '1' || activo == true;
+        
+        const iconContainer = document.getElementById('statusIconContainer');
+        const titleModal = document.getElementById('statusModalTitle');
+        const messageModal = document.getElementById('statusModalMessage');
+        const submitBtn = document.getElementById('statusSubmitBtn');
+
+        if (isActive) {
+            iconContainer.innerHTML = '<div class="bg-warning bg-opacity-10 text-warning rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;"><i class="fas fa-power-off fa-2x"></i></div>';
+            titleModal.textContent = '¿Inactivar Motor?';
+            messageModal.innerHTML = `El motor <b>"${nombre}"</b> dejará de estar operativo temporalmente.`;
+            submitBtn.className = 'btn btn-warning rounded-pill px-3 btn-sm fw-bold text-dark';
+            submitBtn.textContent = 'Sí, Inactivar';
+        } else {
+            iconContainer.innerHTML = '<div class="bg-success bg-opacity-10 text-success rounded-circle mx-auto d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;"><i class="fas fa-check-circle fa-2x"></i></div>';
+            titleModal.textContent = '¿Activar Motor?';
+            messageModal.innerHTML = `El motor <b>"${nombre}"</b> volverá a estar activo en el sistema.`;
+            submitBtn.className = 'btn btn-success rounded-pill px-3 btn-sm fw-bold text-white';
+            submitBtn.textContent = 'Sí, Activar';
+        }
+
+        var statusModal = new bootstrap.Modal(document.getElementById('statusMotorModal'));
+        statusModal.show();
+    }
+</script>
 @endpush

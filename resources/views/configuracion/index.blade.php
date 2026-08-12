@@ -63,30 +63,28 @@
             </div>
         </div>
 
-                    {{-- Tarjeta: Motores de Retención --}}
-<div class="col-md-6 col-lg-4 col-xl">
-    <div class="card card-menu h-100 border-0 shadow-sm transition-all">
-        <div class="card-body p-4 text-center d-flex flex-column align-items-center">
-            
-            {{-- Icono representativo --}}
-            <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
-                <i class="fas fa-cogs fa-2x"></i>
+        {{-- Card 3: Motores de Retención --}}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-menu h-100 border-0 shadow-sm transition-all">
+                <div class="card-body p-4 text-center d-flex flex-column align-items-center">
+                    
+                    <div class="icon-shape bg-primary text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                        <i class="fas fa-cogs fa-2x"></i>
+                    </div>
+                    
+                    <h3 class="card-title fw-bold h5 mb-2">Motores de Retención</h3>
+                    <p class="card-text text-muted mb-4 small">
+                        Configure y gestione los motores de cálculo por ente retenedor.
+                    </p>
+                    
+                    <a href="{{ route('motores.index') }}" class="btn btn-primary text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                        <i class="fas fa-sliders-h me-2"></i> Gestionar Motores
+                    </a>
+                </div>
             </div>
-            
-            <h3 class="card-title fw-bold h5 mb-2">Motores de Retención</h3>
-            <p class="card-text text-muted mb-4 small">
-                Configure y gestione los motores de cálculo por ente retenedor.
-            </p>
-            
-            {{-- Botón de acción --}}
-            <a href="{{ route('motores.index') }}" class="btn btn-primary text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
-                <i class="fas fa-sliders-h me-2"></i> Gestionar Motores
-            </a>
         </div>
-    </div>
-</div>
 
-        {{-- Card 3: Prioridad de Cuentas --}}
+        {{-- Card 4: Prioridad de Cuentas --}}
         <div class="col-md-6 col-lg-4">
             <div class="card card-menu h-100 border-0 shadow-sm transition-all">
                 <div class="card-body p-4 text-center d-flex flex-column align-items-center">
@@ -100,9 +98,29 @@
                         Modifique y establezca el orden de jerarquía y prioridad en la deducción de cuentas.
                     </p>
                     
-                    {{-- ✅ Comilla corregida aquí: --}}
                     <a href="{{ route('configuracion.prioridades-cuentas.index') }}" class="btn btn-warning text-dark fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
                         <i class="fas fa-sliders-h me-2"></i> Configurar Prioridades
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {{-- Card 5: Administración de Usuarios --}}
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-menu h-100 border-0 shadow-sm transition-all">
+                <div class="card-body p-4 text-center d-flex flex-column align-items-center">
+                    
+                    <div class="icon-shape bg-purple text-white rounded-circle mb-4 d-flex align-items-center justify-content-center shadow-sm" style="width: 80px; height: 80px;">
+                        <i class="fas fa-users-cog fa-2x"></i>
+                    </div>
+                    
+                    <h3 class="card-title fw-bold h5 mb-2">Administración de Usuarios</h3>
+                    <p class="card-text text-muted mb-4 small">
+                        Gestione cuentas de usuario, asignación de roles, permisos del sistema y accesos.
+                    </p>
+                    
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-purple text-white fw-bold btn-lg w-100 mt-auto rounded-pill shadow-sm">
+                        <i class="fas fa-user-shield me-2"></i> Gestionar Usuarios
                     </a>
                 </div>
             </div>
@@ -140,6 +158,22 @@
 
     .card-menu:hover .icon-shape {
         transform: scale(1.1);
+    }
+
+    /* Clases personalizadas para el color Púrpura/Violeta de Usuarios */
+    .bg-purple {
+        background-color: #6f42c1 !important;
+    }
+
+    .btn-purple {
+        background-color: #6f42c1;
+        border-color: #6f42c1;
+    }
+
+    .btn-purple:hover {
+        background-color: #59339d;
+        border-color: #543192;
+        color: #fff;
     }
 </style>
 @endpush

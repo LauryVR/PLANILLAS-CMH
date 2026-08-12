@@ -393,4 +393,34 @@ public function descargarExcel($id)
         }
     }, $fileName);
 }
+
+public function edit($id)
+{
+    $motor = MotorRetencion::findOrFail($id);
+    
+    // Retornar en formato JSON para que el modal lo lea correctamente
+    return response()->json($motor);
+}
+
+    public function update(Request $request, $id)
+    {
+        $motor = MotorRetencion::findOrFail($id);
+        $motor->update([
+            'ente_retencion_id' => $request->ente_retencion_id,
+            'nombre_motor' => $request->nombre_motor,
+        ]);
+
+        return redirect()->route('motores.index')->with('success', 'Motor actualizado correctamente.');
+    }
+
+  public function status($id)
+{
+    $motor = MotorRetencion::findOrFail($id);
+    
+    // Cambiar el estado: si es 1 pasa a 0, si es 0 pasa a 1
+    $motor->activo = !$motor->activo;
+    $motor->save();
+
+    return redirect()->back()->with('success', 'El estado del motor ha sido actualizado correctamente.');
+}
 }

@@ -138,4 +138,9 @@ Route::get('/dashboard', function () {
 })->name('dashboard');
 
 Route::post('/motores', [MotorRetencionController::class, 'store'])->name('motores.store');
+
+// 👇 ESTAS SON LAS QUE FALTABAN Y CAUSABAN EL ERROR:
+Route::get('/motores/{id}/edit', [MotorRetencionController::class, 'edit'])->name('motores.edit');
+Route::put('/motores/{id}', [MotorRetencionController::class, 'update'])->name('motores.update');
+Route::patch('/motores/{id}/status', [MotorRetencionController::class, 'status'])->name('motores.status');
 });
