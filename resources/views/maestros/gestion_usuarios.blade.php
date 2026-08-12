@@ -22,17 +22,28 @@
 
         {{-- Encabezado del módulo --}}
         <div class="card-header bg-primary text-white py-3">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3 class="mb-0 fs-4">
-                    <i class="fas fa-users-cog me-2"></i> Gestión e Historia de Usuarios
-                </h3>
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                
+                {{-- Lado izquierdo: Título y Botón de Volver --}}
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <h3 class="mb-0 fs-4">
+                        <i class="fas fa-users-cog me-2"></i> Gestión e Historia de Usuarios
+                    </h3>
 
-                <a href="{{ route('admin.users.create') }}" class="btn btn-light text-primary fw-bold">
-                    <i class="fas fa-user-plus me-1"></i> Nuevo Usuario
-                </a>
+                    <a href="{{ route('configuracion.index') }}" class="btn btn-light btn-sm rounded-pill px-3 fw-medium text-dark shadow-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Volver a Configuración
+                    </a>
+                </div>
+
+                {{-- Lado derecho: Acción principal --}}
+                <div>
+                    <a href="{{ route('admin.users.create') }}" class="btn btn-light text-primary fw-bold">
+                        <i class="fas fa-user-plus me-1"></i> Nuevo Usuario
+                    </a>
+                </div>
+
             </div>
         </div>
-
         <div class="card-body">
 
             {{-- Buscador y total de registros --}}
