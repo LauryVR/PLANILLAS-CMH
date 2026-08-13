@@ -235,17 +235,24 @@ public function index()
     $archivo = $request->file('archivo_retencion');
 
     try {
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($archivo->getPathname());
+
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load(
+            $archivo->getPathname()
+        );
+
         $sheet = $spreadsheet->getActiveSheet();
         $filas = $sheet->toArray();
 
-        // Recuperamos las cuentas por cobrar actuales de la sesión para el cruce de nombres
+        // Recuperamos las cuentas por cobrar actuales de la sesión
         $datosActuales = $request->session()->get('datos', []);
 
         $mapaCuentasPorCobrar = [];
+
         foreach ($datosActuales as $cuentaItem) {
+
             $dniCuenta = trim($cuentaItem['dni'] ?? '');
             $nombreCuenta = trim($cuentaItem['nombre'] ?? '');
+
             if (!empty($dniCuenta)) {
                 $mapaCuentasPorCobrar[$dniCuenta] = $nombreCuenta;
             }
@@ -253,24 +260,37 @@ public function index()
 
         $retenciones = [];
         $erroresRetencion = [];
-        
-        // --- PASO EXTRA: Detectar DNIs duplicados en el archivo Excel antes de procesarlos ---
+
+        // NUEVO
+        $retencionesNoReconocidas = [];
+
+        // Detectar duplicados
         $conteoDnisEnArchivo = [];
+
         for ($i = 1; $i < count($filas); $i++) {
+
             $dniCrudo = trim($filas[$i][0] ?? '');
+
             if (!empty($dniCrudo)) {
-                // Limpieza básica temporal para contar duplicados exactos
-                $dniLimpioTemp = is_numeric($dniCrudo) ? number_format((float)$dniCrudo, 0, '', '') : $dniCrudo;
-                if (strlen($dniLimpioTemp) === 12) { $dniLimpioTemp = '0' . $dniLimpioTemp; }
-                
-                $conteoDnisEnArchivo[$dniLimpioTemp] = ($conteoDnisEnArchivo[$dniLimpioTemp] ?? 0) + 1;
+
+                $dniLimpioTemp = is_numeric($dniCrudo)
+                    ? number_format((float)$dniCrudo, 0, '', '')
+                    : $dniCrudo;
+
+                if (strlen($dniLimpioTemp) === 12) {
+                    $dniLimpioTemp = '0' . $dniLimpioTemp;
+                }
+
+                $conteoDnisEnArchivo[$dniLimpioTemp] =
+                    ($conteoDnisEnArchivo[$dniLimpioTemp] ?? 0) + 1;
             }
         }
 
         for ($i = 1; $i < count($filas); $i++) {
+
             $fila = $filas[$i];
             $numLinea = $i + 1;
-            
+
             $dni = trim($fila[0] ?? '');
             $nombreArchivoRetencion = trim($fila[1] ?? '');
             $monto = trim($fila[2] ?? 0);
@@ -284,70 +304,163 @@ public function index()
             $tieneError = false;
             $mensajeError = '';
 
-            // Limpieza y estandarización del DNI actual para validaciones
-            $dniLimpioCheck = is_numeric($dni) ? number_format((float)$dni, 0, '', '') : $dni;
-            if (strlen($dniLimpioCheck) === 12) { $dniLimpioCheck = '0' . $dniLimpioCheck; }
+            $dniLimpioCheck = is_numeric($dni)
+                ? number_format((float)$dni, 0, '', '')
+                : $dni;
 
-            // 1. Validar si el DNI está repetido en el archivo
-            if (isset($conteoDnisEnArchivo[$dniLimpioCheck]) && $conteoDnisEnArchivo[$dniLimpioCheck] > 1) {
-                $tieneError = true;
-                $mensajeError = "El DNI '{$dniLimpioCheck}' está duplicado en el archivo de retención.";
-                $erroresRetencion[] = "Fila {$numLinea}: {$mensajeError}";
+            if (strlen($dniLimpioCheck) === 12) {
+                $dniLimpioCheck = '0' . $dniLimpioCheck;
             }
 
-            // 2. Buscar en la Base de Datos (Maestro)
+            // Validar duplicados
+            if (
+                isset($conteoDnisEnArchivo[$dniLimpioCheck]) &&
+                $conteoDnisEnArchivo[$dniLimpioCheck] > 1
+            ) {
+
+                $tieneError = true;
+
+                $mensajeError =
+                    "El DNI '{$dniLimpioCheck}' está duplicado en el archivo de retención.";
+
+                $erroresRetencion[] =
+                    "Fila {$numLinea}: {$mensajeError}";
+            }
+
+            // Buscar en maestro
             $maestro = $this->buscarMaestroFlexible($dni);
 
             if (!$maestro) {
+
                 $tieneError = true;
-                $mensajeError = empty($mensajeError) 
-                    ? "El DNI '{$dni}' no se encuentra registrado en el sistema." 
-                    : $mensajeError . " Además, no se encuentra registrado en el sistema.";
-                if (!in_array("Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.", $erroresRetencion)) {
-                    $erroresRetencion[] = "Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.";
+
+                $mensajeError = empty($mensajeError)
+                    ? "El DNI '{$dni}' no se encuentra registrado en el sistema."
+                    : $mensajeError .
+                        " Además, no se encuentra registrado en el sistema.";
+
+                // NUEVO: guardar para mostrar en otra tabla
+                $retencionesNoReconocidas[] = [
+                    'linea'  => $numLinea,
+                    'dni'    => $dniLimpioCheck,
+                    'nombre' => $nombreArchivoRetencion,
+                    'monto'  => $monto
+                ];
+
+                if (
+                    !in_array(
+                        "Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.",
+                        $erroresRetencion
+                    )
+                ) {
+                    $erroresRetencion[] =
+                        "Fila {$numLinea}: El DNI '{$dni}' no se encuentra registrado en el sistema.";
                 }
+
             } else {
+
                 $dniValido = $maestro->dni;
+
                 $nombreBd = trim($maestro->nombre ?? '');
 
                 if (isset($mapaCuentasPorCobrar[$dniValido])) {
+
                     $nombreCxC = $mapaCuentasPorCobrar[$dniValido];
-                    if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreCxC)) {
+
+                    if (
+                        empty($nombreFinal) ||
+                        strtolower($nombreFinal) !== strtolower($nombreCxC)
+                    ) {
                         $nombreFinal = $nombreCxC;
                     }
+
                 } else {
-                    if (empty($nombreFinal) || strtolower($nombreFinal) !== strtolower($nombreBd)) {
+
+                    if (
+                        empty($nombreFinal) ||
+                        strtolower($nombreFinal) !== strtolower($nombreBd)
+                    ) {
                         $nombreFinal = $nombreBd;
                     }
                 }
             }
 
             $retenciones[] = [
-                'linea' => $numLinea,
-                'dni' => $dniValido,
-                'nombre' => $nombreFinal,
-                'monto' => $monto,
-                'tiene_error' => $tieneError,
+                'linea'         => $numLinea,
+                'dni'           => $dniValido,
+                'nombre'        => $nombreFinal,
+                'monto'         => $monto,
+                'tiene_error'   => $tieneError,
                 'detalle_error' => $mensajeError
             ];
         }
 
-        // Guardar las retenciones en la sesión
-        $request->session()->put('retenciones_cargadas', $retenciones);
+        $request->session()->put(
+            'retenciones_cargadas',
+            $retenciones
+        );
+
+        // NUEVO
+        $request->session()->put(
+            'retenciones_no_reconocidas',
+            $retencionesNoReconocidas
+        );
 
         if (count($erroresRetencion) > 0) {
+
             return back()
                 ->with('errores_retencion_detalle', $erroresRetencion)
-                ->with('error', 'Se encontraron errores (DNIS duplicados o no registrados) en la planilla. Revise las filas marcadas en rojo.');
-            }
+                ->with(
+                    'error',
+                    'Se encontraron errores (DNIs duplicados o no registrados) en la planilla. Revise las filas marcadas en rojo.'
+                );
+        }
 
-        return back()->with('success', 'Archivo de retenciones leído, validado y cruzado correctamente.');
+        return back()->with(
+            'success',
+            'Archivo de retenciones leído, validado y cruzado correctamente.'
+        );
 
     } catch (\Exception $e) {
-        return back()->with('error', 'Error al leer el archivo de retenciones: ' . $e->getMessage());
+
+        return back()->with(
+            'error',
+            'Error al leer el archivo de retenciones: ' . $e->getMessage()
+        );
     }
 }
     
+
+
+public function guardarDesdeRetencion(Request $request)
+{
+    $request->validate([
+        'dni' => 'required',
+        'nombre' => 'required',
+        'no_colegiado' => 'nullable'
+    ]);
+
+    $existe = Maestro::where('dni', $request->dni)->exists();
+
+    if ($existe) {
+
+        return back()->with(
+            'error',
+            'Ese DNI ya existe en la tabla Maestros.'
+        );
+    }
+
+    Maestro::create([
+        'dni' => trim($request->dni),
+        'nombre' => trim($request->nombre),
+        'no_colegiado' => trim($request->no_colegiado)
+    ]);
+
+    return back()->with(
+        'success',
+        'Registro agregado correctamente a Maestros.'
+    );
+}
     /**
      * Guarda masivamente en la BD los datos validados.
      */

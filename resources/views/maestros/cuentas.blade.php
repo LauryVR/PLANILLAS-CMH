@@ -199,6 +199,8 @@
 
     @endif
 
+
+
     {{-- 2. Tabla de Resultados Editables --}}
     @if(!empty(session('datos')) || !empty($datos))
         <form id="formGuardarCuentas" action="{{ route('cuentas.guardar') }}" method="POST">
@@ -406,98 +408,457 @@
     @endif
 
     
-    {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
+   {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
 @if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="mb-0">
-                <i class="fas fa-file-invoice-dollar me-2"></i> Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
-            </h5>
-            {{-- Barra de búsqueda rápida --}}
-            <div class="input-group input-group-sm" style="max-width: 300px;">
-                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-                <input type="text" id="buscadorRetenciones" class="form-control" placeholder="Buscar por DNI o Nombre...">
-            </div>
-        </div>
-        <div class="card-body">
 
-            {{-- Alerta detallada si hay errores en las retenciones --}}
-            @if(session('errores_retencion_detalle'))
-                <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i> ¡Atención! Errores detectados en la Planilla</h5>
-                    <p class="mb-2">Por favor, corrija los siguientes errores en su archivo Excel (DNIs duplicados o inexistentes) y <strong>vuelva a cargar</strong>:</p>
-                    <ul class="mb-0 small" style="max-height: 150px; overflow-y: auto;">
-                        @foreach(session('errores_retencion_detalle') as $errDetalle)
-                            <li>{{ $errDetalle }}</li>
-                        @endforeach
-                    </ul>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0">
+            <i class="fas fa-file-invoice-dollar me-2"></i>
+            Retenciones Cargadas ({{ count(session('retenciones_cargadas')) }} registros)
+        </h5>
 
-            <div class="table-responsive">
-                <table id="tablaRetenciones" class="table table-bordered table-striped table-hover align-middle small">
-                    <thead class="table-secondary text-nowrap">
-                        <tr>
-                            <th>Fila Excel</th>
-                            <th>DNI</th>
-                            <th>Nombre</th>
-                            <th>Monto a Cobrar</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach(session('retenciones_cargadas') as $ret)
-                            @php
-                                $dniBruto = trim($ret['dni'] ?? '');
-                                
-                                if (is_numeric($dniBruto)) {
-                                    $dniLimpio = number_format((float)$dniBruto, 0, '', '');
-                                } else {
-                                    $dniLimpio = $dniBruto;
-                                }
-
-                                if (strlen($dniLimpio) === 12) {
-                                    $dniLimpio = '0' . $dniLimpio;
-                                }
-
-                                $tieneError = $ret['tiene_error'] ?? false;
-                                $detalleError = $ret['detalle_error'] ?? '';
-                            @endphp
-                            
-                            {{-- Si tiene error, se pinta la fila de rojo y muestra el motivo al pasar el mouse --}}
-                            <tr class="{{ $tieneError ? 'table-danger fw-bold' : '' }}" @if($tieneError) title="{{ $detalleError }}" @endif>
-                                <td class="text-center text-nowrap">#{{ $ret['linea'] ?? '-' }}</td>
-                                <td class="text-nowrap dni-cell">{{ $dniLimpio }}</td>
-                                <td class="text-start name-cell">{{ $ret['nombre'] ?? '' }}</td>
-                                <td class="text-end text-nowrap">{{ number_format((float)($ret['monto'] ?? 0), 2) }}</td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <span class="input-group-text bg-white">
+                <i class="fas fa-search text-muted"></i>
+            </span>
+            <input
+                type="text"
+                id="buscadorRetenciones"
+                class="form-control"
+                placeholder="Buscar por DNI o Nombre...">
         </div>
     </div>
 
-    {{-- Script JavaScript para la barra de búsqueda instantánea en la tabla --}}
-    <script>
-        document.getElementById('buscadorRetenciones').addEventListener('keyup', function() {
-            let filtro = this.value.toLowerCase();
-            let filas = document.querySelectorAll('#tablaRetenciones tbody tr');
+    <div class="card-body">
 
-            filas.forEach(function(fila) {
-                let dni = fila.querySelector('.dni-cell').textContent.toLowerCase();
-                let nombre = fila.querySelector('.name-cell').textContent.toLowerCase();
+        @if(session('errores_retencion_detalle'))
 
-                if (dni.includes(filtro) || nombre.includes(filtro)) {
-                    fila.style.display = '';
-                } else {
-                    fila.style.display = 'none';
-                }
-            });
-        });
-    </script>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+
+                <h5 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ¡Atención! Errores detectados en la Planilla
+                </h5>
+
+                <p class="mb-2">
+                    Por favor, corrija los siguientes errores en su archivo Excel
+                    (DNIs duplicados o inexistentes) y <strong>vuelva a cargar</strong>.
+                </p>
+
+                <ul class="mb-0 small" style="max-height:150px;overflow-y:auto;">
+                    @foreach(session('errores_retencion_detalle') as $errDetalle)
+                        <li>{{ $errDetalle }}</li>
+                    @endforeach
+                </ul>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert">
+                </button>
+
+            </div>
+
+        @endif
+
+        <div class="table-responsive">
+
+            <table id="tablaRetenciones"
+                   class="table table-bordered table-striped table-hover align-middle small">
+
+                <thead class="table-secondary text-nowrap">
+                    <tr>
+                        <th>Fila Excel</th>
+                        <th>DNI</th>
+                        <th>Nombre</th>
+                        <th>Monto a Cobrar</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                @foreach(session('retenciones_cargadas') as $ret)
+
+                    @php
+                        $dniBruto = trim($ret['dni'] ?? '');
+
+                        if (is_numeric($dniBruto)) {
+                            $dniLimpio = number_format((float)$dniBruto, 0, '', '');
+                        } else {
+                            $dniLimpio = $dniBruto;
+                        }
+
+                        if (strlen($dniLimpio) === 12) {
+                            $dniLimpio = '0' . $dniLimpio;
+                        }
+
+                        $tieneError = $ret['tiene_error'] ?? false;
+                        $detalleError = $ret['detalle_error'] ?? '';
+                    @endphp
+
+                    <tr
+                        class="{{ $tieneError ? 'table-danger fw-bold' : '' }}"
+                        @if($tieneError) title="{{ $detalleError }}" @endif>
+
+                        <td class="text-center">
+                            #{{ $ret['linea'] ?? '-' }}
+                        </td>
+
+                        <td class="dni-cell">
+                            {{ $dniLimpio }}
+                        </td>
+
+                        <td class="name-cell">
+                            {{ $ret['nombre'] ?? '' }}
+                        </td>
+
+                        <td class="text-end">
+                            {{ number_format((float)($ret['monto'] ?? 0), 2) }}
+                        </td>
+
+                    </tr>
+
+                @endforeach
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+</div>
+
+
+{{-- NOTIFICACIONES DE ÉXITO O ERROR --}}
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+        <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
 @endif
 
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i> {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+@endif
+
+{{-- MODAL AUTOMÁTICO SOLO SI EL DNI YA EXISTE AL GUARDAR EN MAESTROS --}}
+@if(session('error') == 'Ese DNI ya existe en la tabla Maestros.' || $errors->any())
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var modalElement = document.getElementById('modalAgregarMaestro');
+        if (modalElement) {
+            var modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    });
+</script>
+@endif
+{{-- TABLA DE NO RECONOCIDOS --}}
+@if(session('retenciones_no_reconocidas') && count(session('retenciones_no_reconocidas')) > 0)
+
+@php
+    $noReconocidos = session('retenciones_no_reconocidas', []);
+@endphp
+
+<div class="alert alert-danger d-flex justify-content-between align-items-center mt-3">
+    <div>
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        Se encontraron <strong>{{ count($noReconocidos) }}</strong> DNI(s) no registrados en Maestros.
+    </div>
+
+    <button type="button"
+            class="btn btn-light btn-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#modalNoReconocidos">
+        <i class="fas fa-search me-1"></i> Ver Detalle
+    </button>
+</div>
+
+<div class="modal fade" id="modalNoReconocidos" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    DNIs no encontrados en Maestros
+                </h5>
+
+                <button type="button"
+                        class="btn-close btn-close-white"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <div class="modal-body">
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <input type="text"
+                               id="buscarNoReconocidos"
+                               class="form-control"
+                               placeholder="Buscar por DNI o nombre">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Fila</th>
+                                <th>DNI</th>
+                                <th>Nombre</th>
+                                <th>Monto</th>
+                                <th width="120">Acción</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaNoReconocidos">
+
+                            @foreach($noReconocidos as $item)
+
+                            <tr class="fila-no-reconocida">
+                                <td>{{ $item['linea'] }}</td>
+
+                                <td class="dni">
+                                    {{ $item['dni'] }}
+                                </td>
+
+                                <td class="nombre">
+                                    {{ $item['nombre'] }}
+                                </td>
+
+                                <td>
+                                    {{ number_format((float)$item['monto'], 2) }}
+                                </td>
+
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-success btn-sm btn-agregar-maestro"
+                                            data-dni="{{ $item['dni'] }}"
+                                            data-nombre="{{ $item['nombre'] }}">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            @endforeach
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span id="infoPaginacionNoReconocidos"></span>
+
+                    <ul class="pagination pagination-sm mb-0"
+                        id="linksNoReconocidos">
+                    </ul>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const filas = Array.from(
+        document.querySelectorAll('.fila-no-reconocida')
+    );
+
+    let pagina = 1;
+    let porPagina = 5;
+
+    function renderTabla() {
+
+        const visibles = filas.filter(
+            fila => fila.style.display !== 'none'
+        );
+
+        const total = visibles.length;
+        const totalPaginas = Math.ceil(total / porPagina) || 1;
+
+        if (pagina > totalPaginas) {
+            pagina = totalPaginas;
+        }
+
+        filas.forEach(f => f.style.display = 'none');
+
+        const inicio = (pagina - 1) * porPagina;
+        const fin = inicio + porPagina;
+
+        visibles.slice(inicio, fin)
+            .forEach(f => f.style.display = '');
+
+        document.getElementById(
+            'infoPaginacionNoReconocidos'
+        ).innerHTML =
+            `Mostrando ${total === 0 ? 0 : inicio + 1}
+             a ${Math.min(fin, total)}
+             de ${total} registro(s)`;
+
+        const links = document.getElementById('linksNoReconocidos');
+        links.innerHTML = '';
+
+        for (let i = 1; i <= totalPaginas; i++) {
+            links.innerHTML += `
+                <li class="page-item ${pagina === i ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="cambiarPaginaNoReconocidos(${i}); return false;">${i}</a>
+                </li>
+            `;
+        }
+    }
+
+    window.cambiarPaginaNoReconocidos = function(i) {
+        pagina = i;
+        renderTabla();
+    };
+
+    const buscador = document.getElementById('buscarNoReconocidos');
+
+    if (buscador) {
+        buscador.addEventListener('keyup', function() {
+            const texto = this.value.toLowerCase();
+
+            filas.forEach(fila => {
+                const dni = fila.querySelector('.dni').innerText.toLowerCase();
+                const nombre = fila.querySelector('.nombre').innerText.toLowerCase();
+
+                fila.style.display =
+                    (dni.includes(texto) || nombre.includes(texto))
+                    ? ''
+                    : 'none';
+            });
+
+            pagina = 1;
+            renderTabla();
+        });
+    }
+
+    renderTabla();
+
+});
+</script>
+
+@endif
+
+{{-- SCRIPTS GENERALES Y DE BUSCADOR DE RETENCIONES --}}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    const buscadorRetenciones = document.getElementById('buscadorRetenciones');
+    if (buscadorRetenciones) {
+        buscadorRetenciones.addEventListener('keyup', function () {
+            let filtro = this.value.toLowerCase();
+
+            document.querySelectorAll('#tablaRetenciones tbody tr')
+                .forEach(function (fila) {
+                    let dniElement = fila.querySelector('.dni-cell');
+                    let nameElement = fila.querySelector('.name-cell');
+
+                    if (dniElement && nameElement) {
+                        let dni = dniElement.textContent.toLowerCase();
+                        let nombre = nameElement.textContent.toLowerCase();
+
+                        fila.style.display =
+                            (dni.includes(filtro) || nombre.includes(filtro))
+                            ? ''
+                            : 'none';
+                    }
+                });
+        });
+    }
+
+    document.querySelectorAll('.btn-agregar-maestro').forEach(function(btn){
+        btn.addEventListener('click', function(){
+            document.getElementById('modal_dni').value = this.dataset.dni;
+            document.getElementById('modal_nombre').value = this.dataset.nombre;
+
+            let modal = new bootstrap.Modal(
+                document.getElementById('modalAgregarMaestro')
+            );
+
+            modal.show();
+        });
+    });
+
+});
+</script>
+
+{{-- MODAL PARA AGREGAR A DATOS MAESTROS --}}
+<div class="modal fade" id="modalAgregarMaestro" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <form action="{{ route('maestros.guardar.desde.retencion') }}" method="POST">
+                @csrf
+
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Agregar Registro a Maestros</h5>
+                    <button type="button"
+                            class="btn-close btn-close-white"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label class="form-label">DNI</label>
+                        <input type="text"
+                               class="form-control"
+                               id="modal_dni"
+                               name="dni"
+                               readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text"
+                               class="form-control"
+                               id="modal_nombre"
+                               name="nombre"
+                               required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">No. Colegiado</label>
+                        <input type="text"
+                               class="form-control"
+                               name="no_colegiado"
+                               placeholder="Ej. CODIGO SOCIO DE SAP">
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-bs-dismiss="modal">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-success">
+                        <i class="fas fa-save me-1"></i>Guardar
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+@endif
     {{-- 3. Reporte de Errores y Validaciones --}}
     @if(session('errores_excel'))
         <div id="cardReporteErrores" class="card shadow-sm border-danger mb-4">

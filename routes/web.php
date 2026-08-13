@@ -143,4 +143,10 @@ Route::post('/motores', [MotorRetencionController::class, 'store'])->name('motor
 Route::get('/motores/{id}/edit', [MotorRetencionController::class, 'edit'])->name('motores.edit');
 Route::put('/motores/{id}', [MotorRetencionController::class, 'update'])->name('motores.update');
 Route::patch('/motores/{id}/status', [MotorRetencionController::class, 'status'])->name('motores.status');
+
+Route::post(
+    '/maestros/guardar-desde-retencion',
+    [CuentaController::class, 'guardarDesdeRetencion']
+)->name('maestros.guardar.desde.retencion');
+
 });
