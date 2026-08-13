@@ -101,7 +101,9 @@
                 </div>
             </form>
         </div>
+
     </div>
+
 {{-- 4. Formulario para Gestionar Motor de Entes Retenedores --}}
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-header bg-secondary text-white">
@@ -402,6 +404,8 @@
             </div>
         </form>
     @endif
+
+    
     {{-- 3. Tabla de Previsualización de Retenciones Cargadas --}}
 @if(session('retenciones_cargadas') && count(session('retenciones_cargadas')) > 0)
     <div class="card shadow-sm border-0 mb-4">
@@ -550,27 +554,25 @@
             </div>
         </div>
 @endif
+
 {{-- 4. Tabla de Previsualización de Entes Retenedores Cargados --}}
 @if(session('entes_retenedores') && count(session('entes_retenedores')) > 0)
     @php
         $entesRetenedores = session('entes_retenedores');
 
-        $columnasPosibles = [
-            'cuota_cole' => 'Cuota Cole', 'automatico' => 'Automático', 'estudio' => 'Estudio',
-            'refinancia' => 'Refinancia', 'readecuaci' => 'Readecuaci', 'personal' => 'Personal',
-            'compra_deu' => 'Compra Deu', 'hipotecario' => 'Hipotecario', 'vehiculo' => 'Vehículo'
+        // Mostrar TODAS las columnas
+        $columnasActivas = [
+            'cuota_cole'  => 'Cuota Cole',
+            'automatico'  => 'Automático',
+            'estudio'     => 'Estudio',
+            'refinancia'  => 'Refinancia',
+            'readecuaci'  => 'Readecuaci',
+            'personal'    => 'Personal',
+            'compra_deu'  => 'Compra Deu',
+            'hipotecario' => 'Hipotecario',
+            'vehiculo'    => 'Vehículo',
+            'empleado'    => 'Empleado'
         ];
-
-        // Determinar solo columnas con datos presentes
-        $columnasActivas = [];
-        foreach ($columnasPosibles as $key => $titulo) {
-            foreach ($entesRetenedores as $ente) {
-                if (floatval($ente[$key] ?? 0) > 0) {
-                    $columnasActivas[$key] = $titulo;
-                    break;
-                }
-            }
-        }
     @endphp
 
     <div class="card shadow-sm border-0 mb-4">
@@ -623,12 +625,21 @@
                                     @endif
                                 </td>
                                 @foreach($columnasActivas as $colKey => $colTitle)
-                                    @php $valCol = floatval($ente[$colKey] ?? 0); @endphp
-                                    <td class="text-end">
-                                        @if($valCol > 0)
-                                            <span class="fw-bold text-success">{{ number_format($valCol, 2) }}</span>
+                                    @php 
+                                        // Validar si la columna es 'empleado' o un valor numérico de montos
+                                        $valCol = $ente[$colKey] ?? 0; 
+                                        $esNumerico = is_numeric($valCol);
+                                    @endphp
+                                    <td class="{{ $esNumerico ? 'text-end' : 'text-center' }}">
+                                        @if($esNumerico)
+                                            @if(floatval($valCol) > 0)
+                                                <span class="fw-bold text-success">{{ number_format(floatval($valCol), 2) }}</span>
+                                            @else
+                                                <span class="text-muted">0.00</span>
+                                            @endif
                                         @else
-                                            <span class="text-muted">0.00</span>
+                                            {{-- Muestra texto plano si la columna es el nombre o código del empleado --| --}}
+                                            <span>{{ !empty($valCol) ? $valCol : '-' }}</span>
                                         @endif
                                     </td>
                                 @endforeach
@@ -639,7 +650,6 @@
             </div>
         </div>
     </div>
-
     <script>
         document.getElementById('buscadorEntes').addEventListener('keyup', function() {
             let filtro = this.value.toLowerCase();
@@ -948,135 +958,308 @@
         </a>
     </div>
 
-    <!-- TABLA INSUMOS SAP (AZUL) -->
-    <div class="card shadow-sm border-0 mb-4 mt-2">
-        <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <h5 class="mb-0">
-                <i class="fas fa-calculator me-2"></i> Insumos SAP (Control de Remanentes y Saldos)
-            </h5>
-            <!-- CONTROLES DE FILTRO Y PAGINACIÓN LOCAL -->
-            <div class="d-flex align-items-center gap-2">
-                <select id="filtroPaginasSap" class="form-select form-select-sm w-auto">
-                    <option value="10">10 por pág.</option>
-                    <option value="25" selected>25 por pág.</option>
-                    <option value="50">50 por pág.</option>
-                    <option value="100">100 por pág.</option>
-                    <option value="all">Todos</option>
+<!-- TABLA INSUMOS SAP (AZUL) -->
+<div class="card shadow-sm border-0 mb-4 mt-2">
+    <div class="card-header bg-primary bg-gradient text-white d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0">
+            <i class="fas fa-calculator me-2"></i> Insumos SAP (Control de Remanentes y Saldos)
+        </h5>
+        <!-- CONTROLES DE FILTRO Y PAGINACIÓN LOCAL -->
+        <div class="d-flex align-items-center gap-2">
+            <select id="filtroPaginasSap" class="form-select form-select-sm w-auto">
+                <option value="10">10 por pág.</option>
+                <option value="25" selected>25 por pág.</option>
+                <option value="50">50 por pág.</option>
+                <option value="100">100 por pág.</option>
+                <option value="all">Todos</option>
+            </select>
+            <input type="text" id="buscarSapInput" class="form-control form-control-sm" placeholder="Buscar por Socio o Nombre..." style="width: 220px;">
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive m-0">
+            <table id="tablaInsumosSap" class="table table-bordered table-striped table-hover align-middle text-center small mb-0">
+                <thead class="table-primary text-nowrap">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Número Documento</th>
+                        <th>Débito</th>
+                        <th>Crédito</th>
+                        <th>Comentario</th>
+                        <th>Cuenta Contable</th>
+                        <th class="text-start">Nombre Cuenta</th>
+                        <th>Socio Negocio</th>
+                        <th class="text-start">Nombre Socio</th>
+                    </tr>
+                </thead>
+             <tbody>
+    @foreach(session('insumos_sap', []) as $sap)
+        <tr class="fila-sap">
+
+            <td class="text-nowrap">
+                {{ $sap['fecha'] ?? date('Y-m-d') }}
+            </td>
+
+            <td class="text-nowrap">
+                {{ $sap['numero_documento'] ?? '' }}
+            </td>
+
+            <td class="text-end text-nowrap fw-bold text-success">
+                {{ number_format((float)($sap['debito'] ?? $sap['remanente'] ?? 0), 2) }}
+            </td>
+
+            <td class="text-end text-nowrap">
+                {{ number_format((float)($sap['credito'] ?? 0), 2) }}
+            </td>
+
+            <td class="text-start text-nowrap">
+                {{ $sap['comentario'] ?? 'Remanente de retención' }}
+            </td>
+
+            {{-- Cuenta Contable --}}
+            <td>
+                <select
+                    class="form-select form-select-sm cuenta-select"
+                    name="cuenta_contable[]">
+
+                    <option value="">Seleccione...</option>
+
+                    @foreach($tiposCuenta as $cuenta)
+                        <option
+                            value="{{ $cuenta->cuenta_sap }}"
+                            data-nombre="{{ $cuenta->nombre }}"
+                            {{ ($sap['cuenta_contable'] ?? '') == $cuenta->cuenta_sap ? 'selected' : '' }}>
+                            {{ $cuenta->cuenta_sap }}
+                        </option>
+                    @endforeach
+
                 </select>
-                <input type="text" id="buscarSapInput" class="form-control form-control-sm" placeholder="Buscar por DNI o Nombre..." style="width: 220px;">
-            </div>
+            </td>
+
+            {{-- Nombre Cuenta --}}
+            <td>
+                <select
+                    class="form-select form-select-sm nombre-cuenta-select"
+                    name="nombre_cuenta[]">
+
+                    <option value="">Seleccione...</option>
+
+                    @foreach($tiposCuenta as $cuenta)
+                        <option
+                            value="{{ $cuenta->nombre }}"
+                            data-codigo="{{ $cuenta->cuenta_sap }}"
+                            {{ ($sap['cuenta_contable'] ?? '') == $cuenta->cuenta_sap ? 'selected' : '' }}>
+                            {{ $cuenta->nombre }}
+                        </option>
+                    @endforeach
+
+                </select>
+            </td>
+
+            <td class="text-nowrap socio-col">
+                {{ $sap['socio_negocio'] ?? '' }}
+            </td>
+
+            <td class="text-start text-nowrap nombre-col">
+                {{ $sap['nombre_socio'] ?? $sap['nombre'] ?? '' }}
+            </td>
+
+        </tr>
+    @endforeach
+</tbody>
+            </table>
         </div>
-        <div class="card-body p-0">
-            <div class="table-responsive m-0">
-                <table id="tablaInsumosSap" class="table table-bordered table-striped table-hover align-middle text-center small mb-0">
-                    <thead class="table-primary text-nowrap">
-                        <tr>
-                            <th>Código Colegial</th>
-                            <th>Identificación</th>
-                            <th class="text-start">Nombre</th>
-                            <th>Retenido</th>
-                            <th>Pagado a Cuentas</th>
-                            <th>Remanente (Sobrante)</th>
-                            <th>Saldo Pendiente (Deuda) SIFCO</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach(session('insumos_sap', []) as $sap)
-                            <tr class="fila-sap">
-                                <td class="text-nowrap">{{ $sap['codigo_colegial'] }}</td>
-                                <td class="text-nowrap dni-col">{{ $sap['no_identificacion'] }}</td>
-                                <td class="text-start text-nowrap nombre-col">{{ $sap['nombre'] }}</td>
-                                <td class="text-end text-nowrap">{{ number_format((float)$sap['total_retenido'], 2) }}</td>
-                                <td class="text-end text-nowrap">{{ number_format((float)$sap['total_pagado'], 2) }}</td>
-                                <!-- Remanente de Dinero -->
-                                <td class="text-end text-nowrap fw-bold {{ ($sap['remanente'] ?? 0) > 0 ? 'text-success' : 'text-muted' }}">
-                                    {{ number_format((float)($sap['remanente'] ?? 0), 2) }}
-                                </td>
-                                <!-- Saldo Pendiente de Préstamos -->
-                                <td class="text-end text-nowrap fw-bold {{ ($sap['saldo_pendiente'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
-                                    {{ number_format((float)($sap['saldo_pendiente'] ?? 0), 2) }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <!-- PIE CON PAGINACIÓN BÁSICA JS -->
-        <div class="card-footer bg-light d-flex justify-content-between align-items-center py-2">
-            <small id="contadorRegistrosSap" class="text-muted">Mostrando registros</small>
-            <nav>
-                <ul class="pagination pagination-sm mb-0" id="paginacionSapContainer">
-                    <!-- Los botones de paginación se generan por JavaScript -->
-                </ul>
-            </nav>
-        </div>
-    </div>   
+    </div>
+    <!-- PIE CON PAGINACIÓN BÁSICA JS -->
+    <div class="card-footer bg-light d-flex justify-content-between align-items-center py-2">
+        <small id="contadorRegistrosSap" class="text-muted">Mostrando registros</small>
+        <nav>
+            <ul class="pagination pagination-sm mb-0" id="paginacionSapContainer">
+                <!-- Los botones de paginación se generan por JavaScript -->
+            </ul>
+        </nav>
+    </div>
+</div>
 
+<!-- SCRIPT DE FILTRADO, PAGINACIÓN Y AUTOCOMPLETADO DE CUENTA -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
 
-    <!-- SCRIPT DE FILTRADO Y PAGINACIÓN EN VIVO -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            const inputBuscar = document.getElementById("buscarSapInput");
-            const selectPaginas = document.getElementById("filtroPaginasSap");
-            const tabla = document.getElementById("tablaInsumosSap");
-            const tbody = tabla.querySelector("tbody");
-            const filas = Array.from(tbody.querySelectorAll("tr.fila-sap"));
-            const contador = document.getElementById("contadorRegistrosSap");
-            const paginacionContainer = document.getElementById("paginacionSapContainer");
+    const inputBuscar = document.getElementById("buscarSapInput");
+    const selectPaginas = document.getElementById("filtroPaginasSap");
+    const tabla = document.getElementById("tablaInsumosSap");
+    const tbody = tabla.querySelector("tbody");
+    const filas = Array.from(tbody.querySelectorAll("tr.fila-sap"));
+    const contador = document.getElementById("contadorRegistrosSap");
+    const paginacionContainer = document.getElementById("paginacionSapContainer");
 
-            let paginaActual = 1;
+    let paginaActual = 1;
 
-            function actualizarTabla() {
-                const textoFiltro = inputBuscar.value.toLowerCase().trim();
-                const filasFiltradas = filas.filter(fila => {
-                    const dni = fila.querySelector(".dni-col").textContent.toLowerCase();
-                    const nombre = fila.querySelector(".nombre-col").textContent.toLowerCase();
-                    return dni.includes(textoFiltro) || nombre.includes(textoFiltro);
+    function actualizarTabla() {
+
+        const textoFiltro = inputBuscar.value.toLowerCase().trim();
+
+        const filasFiltradas = filas.filter(fila => {
+
+            const socio = fila.querySelector(".socio-col")
+                .textContent.toLowerCase();
+
+            const nombre = fila.querySelector(".nombre-col")
+                .textContent.toLowerCase();
+
+            return socio.includes(textoFiltro) ||
+                   nombre.includes(textoFiltro);
+
+        });
+
+        const porPaginaValor = selectPaginas.value;
+
+        const porPagina =
+            porPaginaValor === "all"
+                ? filasFiltradas.length
+                : parseInt(porPaginaValor);
+
+        const totalPaginas =
+            Math.ceil(filasFiltradas.length / porPagina) || 1;
+
+        if (paginaActual > totalPaginas) {
+            paginaActual = 1;
+        }
+
+        filas.forEach(fila => {
+            fila.style.display = "none";
+        });
+
+        const inicio = (paginaActual - 1) * porPagina;
+        const fin = inicio + porPagina;
+
+        const filasPagina = filasFiltradas.slice(inicio, fin);
+
+        filasPagina.forEach(fila => {
+            fila.style.display = "";
+        });
+
+        contador.textContent =
+            `Mostrando ${filasPagina.length} de ${filasFiltradas.length} registros filtrados (Total: ${filas.length})`;
+
+        paginacionContainer.innerHTML = "";
+
+        if (porPaginaValor !== "all" && totalPaginas > 1) {
+
+            for (let i = 1; i <= totalPaginas; i++) {
+
+                const li = document.createElement("li");
+
+                li.className =
+                    `page-item ${i === paginaActual ? "active" : ""}`;
+
+                li.innerHTML =
+                    `#${i}</a>`;
+
+                li.addEventListener("click", function (e) {
+
+                    e.preventDefault();
+
+                    paginaActual = i;
+
+                    actualizarTabla();
+
                 });
 
-                const porPaginaValor = selectPaginas.value;
-                const porPagina = porPaginaValor === "all" ? filasFiltradas.length : parseInt(porPaginaValor);
-                const totalPaginas = Math.ceil(filasFiltradas.length / porPagina) || 1;
+                paginacionContainer.appendChild(li);
+            }
+        }
+    }
 
-                if (paginaActual > totalPaginas) paginaActual = 1;
+    inputBuscar.addEventListener("input", () => {
+        paginaActual = 1;
+        actualizarTabla();
+    });
 
-                // Ocultar todas las filas
-                filas.forEach(f => f.style.display = "none");
+    selectPaginas.addEventListener("change", () => {
+        paginaActual = 1;
+        actualizarTabla();
+    });
 
-                // Mostrar solo el rango de la página actual
-                const inicio = (paginaActual - 1) * porPagina;
-                const fin = inicio + porPagina;
-                const filasPagina = filasFiltradas.slice(inicio, fin);
+    // Cuenta -> Nombre
+    tbody.addEventListener("change", function(e) {
 
-                filasPagina.forEach(f => f.style.display = "");
+        if (e.target.classList.contains("cuenta-select")) {
 
-                // Actualizar texto de conteo
-                contador.textContent = `Mostrando ${filasPagina.length} de ${filasFiltradas.length} registros filtrados (Total: ${filas.length})`;
+            const fila = e.target.closest("tr");
 
-                // Generar botones de paginación
-                paginacionContainer.innerHTML = "";
-                if (porPaginaValor !== "all" && totalPaginas > 1) {
-                    for (let i = 1; i <= totalPaginas; i++) {
-                        const li = document.createElement("li");
-                        li.className = `page-item ${i === paginaActual ? "active" : ""}`;
-                        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-                        li.addEventListener("click", function (e) {
-                            e.preventDefault();
-                            paginaActual = i;
-                            actualizarTabla();
-                        });
-                        paginacionContainer.appendChild(li);
-                    }
+            const selectCuenta =
+                fila.querySelector(".cuenta-select");
+
+            const selectNombre =
+                fila.querySelector(".nombre-cuenta-select");
+
+            const codigo = selectCuenta.value;
+
+            Array.from(selectNombre.options).forEach(option => {
+
+                if (option.dataset.codigo === codigo) {
+
+                    selectNombre.value = option.value;
+
                 }
+
+            });
+        }
+
+    });
+
+    // Nombre -> Cuenta
+    tbody.addEventListener("change", function(e) {
+
+        if (e.target.classList.contains("nombre-cuenta-select")) {
+
+            const fila = e.target.closest("tr");
+
+            const selectCuenta =
+                fila.querySelector(".cuenta-select");
+
+            const selectNombre =
+                fila.querySelector(".nombre-cuenta-select");
+
+            const opcion =
+                selectNombre.options[selectNombre.selectedIndex];
+
+            const codigo =
+                opcion.dataset.codigo || "";
+
+            selectCuenta.value = codigo;
+        }
+
+    });
+
+    // Sincronizar al iniciar
+    document.querySelectorAll("tr.fila-sap").forEach(fila => {
+
+        const selectCuenta =
+            fila.querySelector(".cuenta-select");
+
+        const selectNombre =
+            fila.querySelector(".nombre-cuenta-select");
+
+        if (!selectCuenta || !selectNombre) return;
+
+        const codigo = selectCuenta.value;
+
+        Array.from(selectNombre.options).forEach(option => {
+
+            if (option.dataset.codigo === codigo) {
+                selectNombre.value = option.value;
             }
 
-            inputBuscar.addEventListener("input", () => { paginaActual = 1; actualizarTabla(); });
-            selectPaginas.addEventListener("change", () => { paginaActual = 1; actualizarTabla(); });
-
-            actualizarTabla();
         });
-    </script>
+
+    });
+
+    actualizarTabla();
+
+});
+</script>
 @endif
 
 @endsection

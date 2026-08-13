@@ -24,60 +24,7 @@
           </a>
         </li>
 
-        <!-- Menú Desplegable: Gestiones -->
-        <li class="nav-item dropdown">
-          <a class="nav-link nav-link-interactive dropdown-toggle {{ request()->routeIs('maestros.*') || request()->routeIs('excel.*') || request()->routeIs('cuentas.*') ? 'active-custom' : '' }}" 
-             href="#" id="navbarGestiones" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-tasks me-1"></i> <span>Gestiones</span>
-          </a>
-          
-          <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 overflow-hidden animate slideIn mt-2 p-2" aria-labelledby="navbarGestiones">
-            
-            <!-- Opción: Directorio de Maestros -->
-            <li>
-              <a class="dropdown-item p-2 rounded-3 d-flex align-items-center dropdown-item-custom" href="{{ route('maestros.index') }}">
-                <div class="icon-box bg-emerald-light text-emerald me-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
-                  <i class="fas fa-user-md fa-lg"></i>
-                </div>
-                <div>
-                  <div class="fw-bold text-dark">Directorio de Maestros</div>
-                  <small class="text-muted d-block">Consulta y edición de colegiados</small>
-                </div>
-              </a>
-            </li>
-
-            <li><hr class="dropdown-divider my-2 opacity-10"></li>
-
-            <!-- Opción: Carga Masiva Excel -->
-            <li>
-              <a class="dropdown-item p-2 rounded-3 d-flex align-items-center dropdown-item-custom" href="{{ route('excel.index') }}">
-                <div class="icon-box bg-success-light text-success me-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
-                  <i class="fas fa-file-excel fa-lg"></i>
-                </div>
-                <div>
-                  <div class="fw-bold text-dark">Importar desde Excel</div>
-                  <small class="text-muted d-block">Carga masiva de datos maestros</small>
-                </div>
-              </a>
-            </li>
-
-            <li><hr class="dropdown-divider my-2 opacity-10"></li>
-
-            <!-- Opción: Carga de Cuentas por Cobrar -->
-            <li>
-              <a class="dropdown-item p-2 rounded-3 d-flex align-items-center dropdown-item-custom" href="{{ route('cuentas.index') }}">
-                <div class="icon-box bg-warning-light text-warning me-3 rounded-circle d-flex align-items-center justify-content-center flex-shrink-0">
-                  <i class="fas fa-receipt fa-lg"></i>
-                </div>
-                <div>
-                  <div class="fw-bold text-dark">Cuentas por Cobrar (CxC)</div>
-                  <small class="text-muted d-block">Importación y validación de cobros</small>
-                </div>
-              </a>
-            </li>
-          </ul>
-        </li>
-
+       
         <!-- Menú de Usuario -->
         <li class="nav-item dropdown ms-lg-2">
           <a class="nav-link nav-link-interactive dropdown-toggle d-flex align-items-center gap-2 {{ request()->routeIs('password.change.edit') ? 'active-custom' : '' }}" 

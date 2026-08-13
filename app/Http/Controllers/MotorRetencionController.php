@@ -43,384 +43,492 @@ class MotorRetencionController extends Controller
         return back()->with('success', 'Motor de retención creado exitosamente.');
     }
 public function importar(Request $request)
-    {
-        $request->validate([
-            'motor_retencion_id' => 'required|exists:motores_retencion,id',
-            'archivo' => 'required|mimes:xlsx,xls,csv'
-        ]);
+{
+    $request->validate([
+        'motor_retencion_id' => 'required|exists:motores_retencion,id',
+        'archivo' => 'required|mimes:xlsx,xls,csv'
+    ]);
 
-        $motorId = $request->motor_retencion_id;
-        $file = $request->file('archivo');
+    $motorId = $request->motor_retencion_id;
+    $file = $request->file('archivo');
 
-        try {
-            $data = Excel::toArray([], $file);
+    try {
 
-            if (empty($data) || !isset($data[0])) {
-                return back()->with('error', 'El archivo está vacío o no tiene un formato válido.');
-            }
+        $data = Excel::toArray([], $file);
 
-            $filas = $data[0];
-            $dnisInvalidos = [];
-            $dnisEnArchivo = []; // Array para almacenar los DNIs válidos leídos en el Excel
-
-            // 1. PRIMERA PASADA: Validar que todos los DNIs existan y recolectarlos
-            foreach ($filas as $index => $row) {
-                if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue;
-
-                $dni = trim($row[0] ?? '');
-                if (empty($dni)) continue;
-                if (strlen($dni) === 12) $dni = '0' . $dni;
-
-                if (!Maestro::where('dni', $dni)->exists()) {
-                    $dnisInvalidos[] = $dni;
-                } else {
-                    $dnisEnArchivo[] = $dni; // Guardamos el DNI válido encontrado en el archivo
-                }
-            }
-
-            if (!empty($dnisInvalidos)) {
-                $listaDnis = implode(', ', array_unique($dnisInvalidos));
-                return back()->with('error', 'Carga cancelada. Los siguientes DNIs no están registrados: ' . $listaDnis);
-            }
-
-            // Usamos una transacción para garantizar la integridad de la sincronización
-            \Illuminate\Support\Facades\DB::transaction(function () use ($filas, $motorId, $dnisEnArchivo) {
-                
-                // 2. ELIMINAR los registros de este motor que NO están presentes en el Excel subido
-                DetalleMotorConfig::where('motor_retencion_id', $motorId)
-                    ->whereNotIn('dni', $dnisEnArchivo)
-                    ->delete();
-
-               // 3. SEGUNDA PASADA: Guardar o actualizar los registros que sí vienen en el Excel
-    foreach ($filas as $index => $row) {
-        if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue;
-
-        $dni = trim($row[0] ?? '');
-        if (empty($dni)) continue;
-        if (strlen($dni) === 12) $dni = '0' . $dni;
-
-        $maestro = Maestro::where('dni', $dni)->first();
-        
-        if (!$maestro) continue;
-
-        DetalleMotorConfig::updateOrCreate(
-            [
-                'motor_retencion_id' => $motorId,
-                'dni' => $dni
-            ],
-            [
-                'colegiado_nombre'   => $maestro->nombre ?? 'N/A',
-                'numero_colegiado'   => $maestro->no_colegiado ?? 'N/A', 
-                'cuota_colegial'     => $row[1] ?? 0,
-                'automaticos'        => $row[2] ?? 0,
-                'estudio'            => $row[3] ?? 0,
-                'refinanciamiento'   => $row[4] ?? 0,
-                'readecuacion'       => $row[5] ?? 0,
-                'personal'           => $row[6] ?? 0,
-                'compra_deuda'       => $row[7] ?? 0,
-                'hipotecario'        => $row[8] ?? 0,
-                'vehiculo'           => $row[9] ?? 0,
-                'updated_by'         => \Auth::id(), // <--- Agregado para registrar qué usuario hizo la importación
-            ]
-        );
-    }
-            });
-
-            return back()->with('success', 'Carga masiva procesada con éxito. Se actualizaron los registros y se eliminaron los ausentes en el archivo.');
-
-        } catch (Exception $e) {
-            return back()->with('error', 'Error al procesar: ' . $e->getMessage());
-        }
-    }
-public function previsualizar(Request $request)
-    {
-        // 1. Validación de recepción de archivo
-        if (!$request->hasFile('archivo')) {
-            return response()->json(['error' => 'No se recibió ningún archivo'], 400);
+        if (empty($data) || !isset($data[0])) {
+            return back()->with(
+                'error',
+                'El archivo está vacío o no tiene un formato válido.'
+            );
         }
 
-        try {
-            // 2. Procesamiento del archivo Excel
-            $data = Excel::toArray([], $request->file('archivo'));
-            
-            if (empty($data) || !isset($data[0])) {
-                return response()->json(['error' => 'El archivo está vacío o no tiene formato válido'], 400);
+        $filas = $data[0];
+
+        $dnisInvalidos = [];
+        $dnisEnArchivo = [];
+
+        // VALIDAR DNIs
+        foreach ($filas as $index => $row) {
+
+            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+                continue;
             }
 
-            $filas = $data[0];
-            $resultado = [];
-            $tieneErrores = false;
+            $dni = trim($row[0] ?? '');
 
-            // Arrays para control de DNIs duplicados en el Excel
-            $dnisVistos = [];
-            $filasDuplicadas = [];
+            if (empty($dni)) {
+                continue;
+            }
 
-            // 3. PRIMERA PASADA: Detectar DNIs duplicados en el archivo y números de fila exactos
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
+
+            if (!Maestro::where('dni', $dni)->exists()) {
+
+                $dnisInvalidos[] = $dni;
+
+            } else {
+
+                $dnisEnArchivo[] = $dni;
+
+            }
+        }
+
+        if (!empty($dnisInvalidos)) {
+
+            $listaDnis = implode(', ', array_unique($dnisInvalidos));
+
+            return back()->with(
+                'error',
+                'Carga cancelada. Los siguientes DNIs no están registrados: ' . $listaDnis
+            );
+        }
+
+        DB::transaction(function () use ($filas, $motorId, $dnisEnArchivo) {
+
+            // Eliminar los que ya no existen en el Excel
+            DetalleMotorConfig::where('motor_retencion_id', $motorId)
+                ->whereNotIn('dni', $dnisEnArchivo)
+                ->delete();
+
+            // Insertar / Actualizar
             foreach ($filas as $index => $row) {
-                if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue; 
-                
-                $dni = trim($row[0] ?? '');
-                if (empty($dni)) continue;
 
-                if (strlen($dni) === 12) {
-                    $dni = '0' . $dni;
+                if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+                    continue;
                 }
 
-                $numeroFilaExcel = $index + 1; // Fila real en Excel
-
-                if (isset($dnisVistos[$dni])) {
-                    $filasDuplicadas[] = $numeroFilaExcel;
-                    // Aseguramos incluir también la primera aparición si no estaba en la lista
-                    $primeraFila = $dnisVistos[$dni];
-                    if (!in_array($primeraFila, $filasDuplicadas)) {
-                        $filasDuplicadas[] = $primeraFila;
-                    }
-                } else {
-                    $dnisVistos[$dni] = $numeroFilaExcel;
-                }
-            }
-
-            // Si hay duplicados, detenemos y retornamos las filas con error
-            if (!empty($filasDuplicadas)) {
-                sort($filasDuplicadas);
-                return response()->json([
-                    'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' . implode(', ', $filasDuplicadas),
-                    'tiene_errores' => true
-                ], 422);
-            }
-
-            // 4. SEGUNDA PASADA: Iteración sobre las filas para validación con la base de datos Maestro
-            foreach ($filas as $index => $row) {
-                // Omitir cabecera
-                if ($index === 0 && strtolower($row[0] ?? '') == 'dni') continue; 
-                
                 $dni = trim($row[0] ?? '');
-                if (empty($dni)) continue;
+
+                if (empty($dni)) {
+                    continue;
+                }
 
                 if (strlen($dni) === 12) {
                     $dni = '0' . $dni;
                 }
 
                 $maestro = Maestro::where('dni', $dni)->first();
-                $esValido = $maestro !== null;
 
-                if (!$esValido) {
-                    $tieneErrores = true;
+                if (!$maestro) {
+                    continue;
                 }
 
-                // 5. Construcción del arreglo de respuesta
-                $resultado[] = [
-                    'id' => uniqid(),
-                    'dni' => $dni,
-                    'numero_colegiado' => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
-                    'nombre' => $maestro ? $maestro->nombre : 'NO REGISTRADO',
-                    'es_valido' => $esValido,
-                    'cuota' => $row[1] ?? 0,
-                    'auto' => $row[2] ?? 0,
-                    'estudio' => $row[3] ?? 0,
-                    'refi' => $row[4] ?? 0,
-                    'readecuacion' => $row[5] ?? 0,
-                    'personal' => $row[6] ?? 0,
-                    'compra_deuda' => $row[7] ?? 0,
-                    'hipotecario' => $row[8] ?? 0,
-                    'vehiculo' => $row[9] ?? 0,
-                ];
+                DetalleMotorConfig::updateOrCreate(
+                    [
+                        'motor_retencion_id' => $motorId,
+                        'dni' => $dni
+                    ],
+                    [
+                        'colegiado_nombre' => $maestro->nombre ?? 'N/A',
+                        'numero_colegiado' => $maestro->no_colegiado ?? 'N/A',
+
+                        'cuota_colegial'   => $row[1] ?? 0,
+                        'automaticos'      => $row[2] ?? 0,
+                        'estudio'          => $row[3] ?? 0,
+                        'refinanciamiento' => $row[4] ?? 0,
+                        'readecuacion'     => $row[5] ?? 0,
+                        'personal'         => $row[6] ?? 0,
+                        'compra_deuda'     => $row[7] ?? 0,
+                        'hipotecario'      => $row[8] ?? 0,
+                        'vehiculo'         => $row[9] ?? 0,
+
+                        // NUEVO CAMPO
+                        'empleado'         => $row[10] ?? 0,
+
+                        'updated_by'       => Auth::id(),
+                    ]
+                );
+            }
+        });
+
+        return back()->with(
+            'success',
+            'Carga masiva procesada con éxito. Se actualizaron los registros y se eliminaron los ausentes en el archivo.'
+        );
+
+    } catch (Exception $e) {
+
+        return back()->with(
+            'error',
+            'Error al procesar: ' . $e->getMessage()
+        );
+    }
+}
+public function previsualizar(Request $request)
+{
+    // 1. Validación de recepción de archivo
+    if (!$request->hasFile('archivo')) {
+        return response()->json([
+            'error' => 'No se recibió ningún archivo'
+        ], 400);
+    }
+
+    try {
+
+        // 2. Procesamiento del archivo Excel
+        $data = Excel::toArray([], $request->file('archivo'));
+
+        if (empty($data) || !isset($data[0])) {
+            return response()->json([
+                'error' => 'El archivo está vacío o no tiene formato válido'
+            ], 400);
+        }
+
+        $filas = $data[0];
+        $resultado = [];
+        $tieneErrores = false;
+
+        // Arrays para control de DNIs duplicados
+        $dnisVistos = [];
+        $filasDuplicadas = [];
+
+        // 3. PRIMERA PASADA: Validar DNIs duplicados
+        foreach ($filas as $index => $row) {
+
+            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+                continue;
             }
 
-            // 6. Retorno de respuesta JSON
-            return response()->json([
-                'data' => $resultado,
-                'tiene_errores' => $tieneErrores
-            ]);
+            $dni = trim($row[0] ?? '');
 
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Ocurrió un error al procesar el archivo: ' . $e->getMessage()], 500);
+            if (empty($dni)) {
+                continue;
+            }
+
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
+
+            $numeroFilaExcel = $index + 1;
+
+            if (isset($dnisVistos[$dni])) {
+
+                $filasDuplicadas[] = $numeroFilaExcel;
+
+                $primeraFila = $dnisVistos[$dni];
+
+                if (!in_array($primeraFila, $filasDuplicadas)) {
+                    $filasDuplicadas[] = $primeraFila;
+                }
+
+            } else {
+
+                $dnisVistos[$dni] = $numeroFilaExcel;
+            }
         }
+
+        // Hay duplicados
+        if (!empty($filasDuplicadas)) {
+
+            sort($filasDuplicadas);
+
+            return response()->json([
+                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' . implode(', ', $filasDuplicadas),
+                'tiene_errores' => true
+            ], 422);
+        }
+
+        // 4. SEGUNDA PASADA
+        foreach ($filas as $index => $row) {
+
+            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+                continue;
+            }
+
+            $dni = trim($row[0] ?? '');
+
+            if (empty($dni)) {
+                continue;
+            }
+
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
+
+            $maestro = Maestro::where('dni', $dni)->first();
+
+            $esValido = $maestro !== null;
+
+            if (!$esValido) {
+                $tieneErrores = true;
+            }
+
+            // Construcción del arreglo de respuesta
+            $resultado[] = [
+                'id'                => uniqid(),
+                'dni'               => $dni,
+                'numero_colegiado'  => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
+                'nombre'            => $maestro ? $maestro->nombre : 'NO REGISTRADO',
+                'es_valido'         => $esValido,
+
+                'cuota'             => $row[1] ?? 0,
+                'auto'              => $row[2] ?? 0,
+                'estudio'           => $row[3] ?? 0,
+                'refi'              => $row[4] ?? 0,
+                'readecuacion'      => $row[5] ?? 0,
+                'personal'          => $row[6] ?? 0,
+                'compra_deuda'      => $row[7] ?? 0,
+                'hipotecario'       => $row[8] ?? 0,
+                'vehiculo'          => $row[9] ?? 0,
+
+                // NUEVA COLUMNA
+                'empleado'          => $row[10] ?? 0,
+            ];
+        }
+
+        // 6. Retorno
+        return response()->json([
+            'data' => $resultado,
+            'tiene_errores' => $tieneErrores
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'error' => 'Ocurrió un error al procesar el archivo: ' . $e->getMessage()
+        ], 500);
+
     }
+}
 
     /**
      * Nuevo método para cargar datos mediante AJAX para la tabla
      */
-   public function getDetallesJson($motorId)
-    {
-        $detalles = DetalleMotorConfig::where('motor_retencion_id', $motorId)->get();
+public function getDetallesJson($motorId)
+{
+    $detalles = DetalleMotorConfig::where('motor_retencion_id', $motorId)->get();
 
-        $resultados = $detalles->map(function ($item) {
-            $nombreUsuario = 'N/D';
-            
-            if (!empty($item->updated_by)) {
-                // Usamos la ruta completa del modelo para evitar errores de clases no importadas
-                $usuario = \App\Models\User::find($item->updated_by);
-                if ($usuario) {
-                    // Intenta obtener 'name' o 'nombre' dependiendo de cómo esté definida tu tabla users
-                    $nombreUsuario = $usuario->name ?? $usuario->nombre ?? 'N/D';
-                }
+    $resultados = $detalles->map(function ($item) {
+
+        $nombreUsuario = 'N/D';
+
+        if (!empty($item->updated_by)) {
+
+            $usuario = \App\Models\User::find($item->updated_by);
+
+            if ($usuario) {
+                $nombreUsuario = $usuario->name ?? $usuario->nombre ?? 'N/D';
             }
+        }
 
-            return [
-                'id' => $item->id,
-                'dni' => $item->dni,
-                'nombre' => $item->colegiado_nombre,
-                'numero_colegiado' => $item->numero_colegiado,
-                'cuota_colegial' => $item->cuota_colegial,
-                'automaticos' => $item->automaticos,
-                'estudio' => $item->estudio,
-                'refinanciamiento' => $item->refinanciamiento,
-                'readecuacion' => $item->readecuacion,
-                'personal' => $item->personal,
-                'compra_deuda' => $item->compra_deuda,
-                'hipotecario' => $item->hipotecario,
-                'vehiculo' => $item->vehiculo,
-                'updated_at' => $item->updated_at,
-                'updated_by' => $nombreUsuario,
-            ];
-        });
+        return [
+            'id'                => $item->id,
+            'dni'               => $item->dni,
+            'nombre'            => $item->colegiado_nombre,
+            'numero_colegiado'  => $item->numero_colegiado,
 
-        return response()->json($resultados);
-    }
-    public function showImportar()
-    {
-        $motores = MotorRetencion::with('enteRetencion')->get();
-        return view('motores.importar', compact('motores'));
-    }
+            'cuota_colegial'    => $item->cuota_colegial,
+            'automaticos'       => $item->automaticos,
+            'estudio'           => $item->estudio,
+            'refinanciamiento'  => $item->refinanciamiento,
+            'readecuacion'      => $item->readecuacion,
+            'personal'          => $item->personal,
+            'compra_deuda'      => $item->compra_deuda,
+            'hipotecario'       => $item->hipotecario,
+            'vehiculo'          => $item->vehiculo,
 
+            // NUEVO CAMPO
+            'empleado'          => $item->empleado,
+
+            'updated_at'        => $item->updated_at,
+            'updated_by'        => $nombreUsuario,
+        ];
+    });
+
+    return response()->json($resultados);
+}
+
+public function showImportar()
+{
+    $motores = MotorRetencion::with('enteRetencion')->get();
+
+    return view(
+        'motores.importar',
+        compact('motores')
+    );
+}
 public function actualizarMasivo(Request $request)
 {
     $datosNuevos = $request->input('detalles', []);
-    
-    // Definimos las columnas que permitimos editar para mayor seguridad
+
+    // Definimos las columnas que permitimos editar
     $camposPermitidos = [
-        'cuota_colegial', 'automaticos', 'estudio', 'refinanciamiento', 
-        'readecuacion', 'personal', 'compra_deuda', 'hipotecario', 'vehiculo'
+        'cuota_colegial',
+        'automaticos',
+        'estudio',
+        'refinanciamiento',
+        'readecuacion',
+        'personal',
+        'compra_deuda',
+        'hipotecario',
+        'vehiculo',
+        'empleado'
     ];
 
-    // 1. Validar que los campos enviados sean estrictamente 0 o 1
+    // Validar que los valores sean únicamente 0 o 1
     foreach ($datosNuevos as $id => $valores) {
+
         foreach ($valores as $columna => $valor) {
-            // Solo validamos si la columna está en nuestra lista de permitidos
+
             if (in_array($columna, $camposPermitidos)) {
+
                 if (!in_array($valor, [0, '0', 1, '1'], true)) {
-                    return back()->withErrors([
-                        'error' => "El campo '{$columna}' para el registro ID {$id} solo acepta valores 0 o 1."
-                    ])->withInput();
+
+                    return back()
+                        ->withErrors([
+                            'error' => "El campo '{$columna}' para el registro ID {$id} solo acepta valores 0 o 1."
+                        ])
+                        ->withInput();
                 }
             }
         }
     }
 
-    // 2. Procesar la actualización SOLO de lo que realmente cambió
+    // Actualización masiva
     foreach ($datosNuevos as $id => $valores) {
+
         $detalle = DetalleMotorConfig::find($id);
 
         if ($detalle) {
-            // Asignamos temporalmente los valores al modelo, pero aún NO guardamos
+
             foreach ($valores as $columna => $valor) {
+
                 if (in_array($columna, $camposPermitidos)) {
-                    // Actualizamos la propiedad en el modelo
-                    $detalle->{$columna} = (int)$valor; 
+
+                    $detalle->{$columna} = (int) $valor;
                 }
             }
 
-            // isDirty() pregunta: "¿Alguna de estas columnas es diferente a lo que ya está en la base de datos?"
+            // Guardar solo si hubo cambios
             if ($detalle->isDirty()) {
-                // Como SÍ hubo cambios, ahora sí actualizamos el usuario
+
                 $detalle->updated_by = \Auth::id();
-                
-                // save() es inteligente: genera un SQL UPDATE que SOLO incluye las columnas modificadas
+
                 $detalle->save();
             }
         }
     }
 
-    return back()->with('success', 'Los cambios se han guardado correctamente.');
+    return back()->with(
+        'success',
+        'Los cambios se han guardado correctamente.'
+    );
 }
 
 public function descargarExcel($id)
 {
     $motor = MotorRetencion::with('enteRetencion')->findOrFail($id);
-    
+
     $nombreMotor = Str::slug($motor->nombre_motor, '_');
     $nombreEnte = Str::slug($motor->enteRetencion->nombre ?? 'ente', '_');
     $fileName = "motor_{$nombreMotor}_ente_{$nombreEnte}.xlsx";
 
     $detalles = DetalleMotorConfig::where('motor_retencion_id', $id)->get();
 
-    return Excel::download(new class($detalles) implements FromCollection, WithHeadings, WithMapping {
-        protected $data;
+    return Excel::download(
+        new class($detalles) implements FromCollection, WithHeadings, WithMapping {
 
-        public function __construct($data) {
-            $this->data = $data;
-        }
+            protected $data;
 
-        public function collection() {
-            return $this->data;
-        }
+            public function __construct($data)
+            {
+                $this->data = $data;
+            }
 
-        public function map($detalle): array {
-            // Función auxiliar para forzar el valor como texto "0"
-            $format = function($value) {
-                // Si el valor es null, vacío o cero, devolvemos el string "0"
-                return (empty($value) && $value !== 0 && $value !== '0') ? "0" : (string)$value;
-            };
+            public function collection()
+            {
+                return $this->data;
+            }
 
-            return [
-                (string)$detalle->dni,
-                $format($detalle->cuota_colegial),
-                $format($detalle->automaticos),
-                $format($detalle->estudio),
-                $format($detalle->refinanciamiento),
-                $format($detalle->readecuacion),
-                $format($detalle->personal),
-                $format($detalle->compra_deuda),
-                $format($detalle->hipotecario),
-                $format($detalle->vehiculo),
-            ];
-        }
+            public function map($detalle): array
+            {
+                $format = function ($value) {
+                    return (empty($value) && $value !== 0 && $value !== '0')
+                        ? "0"
+                        : (string) $value;
+                };
 
-        public function headings(): array {
-            return [
-                'DNI',
-                'Cuota Colegial',
-                'Automáticos',
-                'Estudio',
-                'Refinanciamiento',
-                'Readecuación',
-                'Personal',
-                'Compra Deuda',
-                'Hipotecario',
-                'Vehículo'
-            ];
-        }
-    }, $fileName);
+                return [
+                    (string) $detalle->dni,
+                    $format($detalle->cuota_colegial),
+                    $format($detalle->automaticos),
+                    $format($detalle->estudio),
+                    $format($detalle->refinanciamiento),
+                    $format($detalle->readecuacion),
+                    $format($detalle->personal),
+                    $format($detalle->compra_deuda),
+                    $format($detalle->hipotecario),
+                    $format($detalle->vehiculo),
+
+                    // NUEVA COLUMNA
+                    $format($detalle->empleado),
+                ];
+            }
+
+            public function headings(): array
+            {
+                return [
+                    'DNI',
+                    'Cuota Colegial',
+                    'Automáticos',
+                    'Estudio',
+                    'Refinanciamiento',
+                    'Readecuación',
+                    'Personal',
+                    'Compra Deuda',
+                    'Hipotecario',
+                    'Vehículo',
+
+                    // NUEVA COLUMNA
+                    'Empleado'
+                ];
+            }
+        },
+        $fileName
+    );
 }
 
 public function edit($id)
 {
     $motor = MotorRetencion::findOrFail($id);
-    
-    // Retornar en formato JSON para que el modal lo lea correctamente
+
     return response()->json($motor);
 }
-
-    public function update(Request $request, $id)
-    {
-        $motor = MotorRetencion::findOrFail($id);
-        $motor->update([
-            'ente_retencion_id' => $request->ente_retencion_id,
-            'nombre_motor' => $request->nombre_motor,
-        ]);
-
-        return redirect()->route('motores.index')->with('success', 'Motor actualizado correctamente.');
-    }
-
-  public function status($id)
+public function update(Request $request, $id)
 {
     $motor = MotorRetencion::findOrFail($id);
-    
-    // Cambiar el estado: si es 1 pasa a 0, si es 0 pasa a 1
-    $motor->activo = !$motor->activo;
-    $motor->save();
 
-    return redirect()->back()->with('success', 'El estado del motor ha sido actualizado correctamente.');
+    $motor->update([
+        'ente_retencion_id' => $request->ente_retencion_id,
+        'nombre_motor'      => $request->nombre_motor,
+    ]);
+
+    return redirect()
+        ->route('motores.index')
+        ->with('success', 'Motor actualizado correctamente.');
 }
+
 }

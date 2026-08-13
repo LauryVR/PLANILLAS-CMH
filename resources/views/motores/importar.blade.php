@@ -96,7 +96,7 @@
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Columna 3:</strong> Automáticos</li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Columna 4:</strong> Estudio</li>
                         <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Columna 5:</strong> Refinanciamiento</li>
-                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Columnas 6 al 10:</strong> Readecuación, Personal, Compra Deuda, Hipotecario, Vehículo</li>
+                        <li class="mb-2"><i class="fas fa-check text-success me-2"></i><strong>Columnas 6 al 10:</strong> Readecuación, Personal, Compra Deuda, Hipotecario, Vehículo, Empleado</li>
                     </ul>
                 </div>
             </div>
@@ -133,66 +133,185 @@
                     </div>
                 </div>
             </div>
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0" id="tabla-detalles">
+        <thead class="table-light text-uppercase fs-7 text-secondary">
+            <tr>
+                <th>DNI</th>
+                <th>N° Colegiado</th>
+                <th>Nombre</th>
+                <th>Cuota</th>
+                <th>Auto</th>
+                <th>Estudio</th>
+                <th>Refi</th>
+                <th>Readecuación</th>
+                <th>Personal</th>
+                <th>Compra Deuda</th>
+                <th>Hipoteca</th>
+                <th>Vehículo</th>
+                <th>Empleado</th>
+                <th class="text-center text-nowrap">Últ. Act.</th>
+            </tr>
+        </thead>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="tabla-detalles">
-                    <thead class="table-light text-uppercase fs-7 text-secondary">
-                        <tr>
-                            <th>DNI</th>
-                            <th>N° Colegiado</th>
-                            <th>Nombre</th>
-                            <th>Cuota</th>
-                            <th>Auto</th>
-                            <th>Estudio</th>
-                            <th>Refi</th>
-                            <th>Readecuación</th>
-                            <th>Personal</th>
-                            <th>Compra Deuda</th>
-                            <th>Hipoteca</th>
-                            <th>Vehículo</th>
-                            <th class="text-center text-nowrap">Últ. Act.</th>
-                        </tr>
-                    </thead>
-                    <tbody id="contenido-detalles">
-                        @isset($detalles)
-                            @foreach($detalles as $detalle)
-                            <tr>
-                                <td>
-                                    {{ $detalle->dni }}
-                                    <input type="hidden" name="detalles[{{ $detalle->id }}][dni]" value="{{ $detalle->dni }}">
-                                </td>
-                                <td>{{ $detalle->numero_colegiado }}</td>
-                                <td>{{ $detalle->colegiado_nombre }}</td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][cuota_colegial]" value="{{ $detalle->cuota_colegial }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][automaticos]" value="{{ $detalle->automaticos }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][estudio]" value="{{ $detalle->estudio }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][refinanciamiento]" value="{{ $detalle->refinanciamiento }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][readecuacion]" value="{{ $detalle->readecuacion }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][personal]" value="{{ $detalle->personal }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][compra_deuda]" value="{{ $detalle->compra_deuda }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][hipotecario]" value="{{ $detalle->hipotecario }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[{{ $detalle->id }}][vehiculo]" value="{{ $detalle->vehiculo }}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" max="1" step="1" style="width: 85px;"></td>
-                                <td class="text-center text-nowrap">
-                                    <div class="small text-muted" style="font-size: 0.75rem;" title="Actualizado: {{ $detalle->updated_at }}">
-                                        {{ $detalle->updated_at ? \Carbon\Carbon::parse($detalle->updated_at)->format('d/m/Y H:i') : '-' }}
-                                    </div>
-                                    <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;" title="Actualizado por ID: {{ $detalle->updated_by ?? 'N/D' }}">
-                                        <i class="fas fa-user me-1"></i>{{ $detalle->updated_by ?? 'N/D' }}
-                                    </span>
-                                </td>
-                            </tr>
-                            @endforeach
-                        @else
-                            <tr>
-                                <td colspan="13" class="text-center text-muted py-5">
-                                    <i class="fas fa-search fa-2x text-light mb-2"></i>
-                                    <p class="mb-0">Seleccione un motor en el filtro superior o previsualice un archivo para ver los registros.</p>
-                                </td>
-                            </tr>
-                        @endisset
-                    </tbody>
-                </table>
-            </div>
+        <tbody id="contenido-detalles">
+
+            @isset($detalles)
+
+                @foreach($detalles as $detalle)
+
+                <tr>
+
+                    <td>
+                        {{ $detalle->dni }}
+                        <input
+                            type="hidden"
+                            name="detalles[{{ $detalle->id }}][dni]"
+                            value="{{ $detalle->dni }}">
+                    </td>
+
+                    <td>{{ $detalle->numero_colegiado }}</td>
+
+                    <td>{{ $detalle->colegiado_nombre }}</td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][cuota_colegial]"
+                            value="{{ $detalle->cuota_colegial }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][automaticos]"
+                            value="{{ $detalle->automaticos }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][estudio]"
+                            value="{{ $detalle->estudio }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][refinanciamiento]"
+                            value="{{ $detalle->refinanciamiento }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][readecuacion]"
+                            value="{{ $detalle->readecuacion }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][personal]"
+                            value="{{ $detalle->personal }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][compra_deuda]"
+                            value="{{ $detalle->compra_deuda }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][hipotecario]"
+                            value="{{ $detalle->hipotecario }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][vehiculo]"
+                            value="{{ $detalle->vehiculo }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td>
+                        <input type="number"
+                            name="detalles[{{ $detalle->id }}][empleado]"
+                            value="{{ $detalle->empleado ?? 0 }}"
+                            class="form-control form-control-sm text-center border-0 bg-light p-1"
+                            min="0" max="1" step="1"
+                            style="width:85px;">
+                    </td>
+
+                    <td class="text-center text-nowrap">
+
+                        <div
+                            class="small text-muted"
+                            style="font-size:0.75rem;"
+                            title="Actualizado: {{ $detalle->updated_at }}">
+
+                            {{ $detalle->updated_at
+                                ? \Carbon\Carbon::parse($detalle->updated_at)->format('d/m/Y H:i')
+                                : '-' }}
+
+                        </div>
+
+                        <span
+                            class="badge bg-light text-secondary border"
+                            style="font-size:0.7rem;"
+                            title="Actualizado por ID: {{ $detalle->updated_by ?? 'N/D' }}">
+
+                            <i class="fas fa-user me-1"></i>
+                            {{ $detalle->updated_by ?? 'N/D' }}
+
+                        </span>
+
+                    </td>
+
+                </tr>
+
+                @endforeach
+
+            @else
+
+                <tr>
+                    <td colspan="14" class="text-center text-muted py-5">
+
+                        <i class="fas fa-search fa-2x text-light mb-2"></i>
+
+                        <p class="mb-0">
+                            Seleccione un motor en el filtro superior o previsualice un archivo para ver los registros.
+                        </p>
+
+                    </td>
+                </tr>
+
+            @endisset
+
+        </tbody>
+    </table>
+</div>
 
             <!-- Controles de Paginación -->
             <div class="d-flex justify-content-between align-items-center mt-3" id="paginacion-container" style="display: none;">
@@ -400,7 +519,7 @@
                 formData.append('motor_retencion_id', motorId);
                 formData.append('_token', '{{ csrf_token() }}');
 
-                tbody.innerHTML = `<tr><td colspan="13" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
                 fetch('{{ route("motor.previsualizar") }}', {
@@ -472,6 +591,7 @@
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                             <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][empleado]" value="${item.empleado ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                             <td class="text-center text-nowrap">
                                 <div class="small text-muted" style="font-size: 0.75rem;">-</div>
                                 <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>N/D</span>
@@ -485,7 +605,7 @@
 
                     let btnProcesar = document.getElementById('btn-procesar');
                     if (contador === 0) {
-                        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">No se encontraron registros válidos.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger py-4">No se encontraron registros válidos.</td></tr>`;
                         if (btnProcesar) btnProcesar.style.display = 'none';
                         if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
                         if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
@@ -510,7 +630,7 @@
                 })
                 .catch(error => {
                     console.error("Error en previsualización:", error);
-                    tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Error al procesar: ${error.message}</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger py-4">Error al procesar: ${error.message}</td></tr>`;
                     mostrarNotificacion("Error de Lectura", error.message, true);
                 });
             });
@@ -527,13 +647,13 @@
 
                 if (!motorId) {
                     todosLosRegistrosHtml = [];
-                    tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-5"><i class="fas fa-search fa-2x text-light mb-2"></i><p class="mb-0">Seleccione un motor para ver registros.</p></td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted py-5"><i class="fas fa-search fa-2x text-light mb-2"></i><p class="mb-0">Seleccione un motor para ver registros.</p></td></tr>`;
                     if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
                     if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'inline-block';
                     return;
                 }
 
-                tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Cargando...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
                 fetch(`/motores/${motorId}/detalles-json`)
@@ -543,7 +663,7 @@
                         paginaActual = 1;
 
                         if (data.length === 0) {
-                            tbody.innerHTML = `<tr><td colspan="13" class="text-center text-muted py-4">No hay registros asociados a este motor.</td></tr>`;
+                            tbody.innerHTML = `<tr><td colspan="14" class="text-center text-muted py-4">No hay registros asociados a este motor.</td></tr>`;
                             if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
                             return;
                         }
@@ -581,6 +701,7 @@
                                 <td><input type="number" name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[${item.id}][empleado]" value="${item.empleado ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td class="text-center text-nowrap">
                                     <div class="small text-muted" style="font-size: 0.75rem;">${fechaFormateada}</div>
                                     <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>${item.updated_by ?? 'N/D'}</span>
@@ -593,7 +714,7 @@
                     })
                     .catch(error => {
                         console.error("Error al cargar detalles:", error);
-                        tbody.innerHTML = `<tr><td colspan="13" class="text-center text-danger py-4">Error al cargar los registros.</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger py-4">Error al cargar los registros.</td></tr>`;
                     });
             });
         }

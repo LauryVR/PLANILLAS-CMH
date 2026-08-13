@@ -23,6 +23,7 @@ protected $fillable = [
     'compra_deuda',
     'hipotecario',
     'vehiculo',
+     'empleado',
     'updated_by',
 ];
 

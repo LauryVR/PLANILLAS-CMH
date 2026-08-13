@@ -44,6 +44,7 @@
 
             </div>
         </div>
+        
         <div class="card-body">
 
             {{-- Buscador y total de registros --}}
