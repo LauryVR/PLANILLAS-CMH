@@ -458,7 +458,7 @@ public function guardarDesdeRetencion(Request $request)
 
     return back()->with(
         'success',
-        'Registro agregado correctamente a Maestros.'
+        'Registro agregado correctamente a Maestros, reinicie el proceso.'
     );
 }
     /**
@@ -1573,6 +1573,87 @@ public function exportarReporteGeneral(Request $request)
         '"'
     );
 
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+public function exportarInsumosNoMedicos(Request $request)
+{
+    // 1. Cargar las sesiones actuales
+    $retencionesCargadas = session('retenciones_cargadas', []);
+    $cuentasCobrar = session('datos', []); 
+    $entesRetenedores = session('entes_retenedores', []); 
+
+    // 2. Crear mapas para búsqueda eficiente
+    $mapaCxC = [];
+    foreach ($cuentasCobrar as $cxc) {
+        $mapaCxC[trim($cxc['dni'] ?? '')] = true;
+    }
+
+    $mapaMotor = [];
+    foreach ($entesRetenedores as $ente) {
+        $mapaMotor[trim($ente['dni'] ?? '')] = true;
+    }
+
+    $insumosNoMedicos = [];
+
+    // 3. Lógica de filtrado
+    foreach ($retencionesCargadas as $ret) {
+        $dni = trim($ret['dni'] ?? '');
+        if (!isset($mapaCxC[$dni]) && !isset($mapaMotor[$dni])) {
+            $insumosNoMedicos[] = $ret;
+        }
+    }
+
+    if (empty($insumosNoMedicos)) {
+        return back()->with('error', 'No existen registros para exportar en Insumos No Médicos.');
+    }
+
+    // 4. Generación del Excel con estructura SAP
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    // Cabeceras SAP
+    $cabeceras = [
+        'Fecha', 'Número Documento', 'Débito', 'Crédito', 
+        'Comentario', 'Cuenta Contable', 'Nombre Cuenta', 
+        'Socio Negocio', 'Nombre Socio'
+    ];
+    $sheet->fromArray($cabeceras, null, 'A1');
+    $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+
+    $fila = 2;
+    $numeroDocumento = 'INSMED_' . date('mY');
+
+    foreach ($insumosNoMedicos as $item) {
+        $sheet->setCellValue('A' . $fila, date('Y-m-d'));
+        $sheet->setCellValue('B' . $fila, $numeroDocumento);
+        $sheet->setCellValue('C' . $fila, (float)($item['monto'] ?? 0)); // Débito
+        $sheet->setCellValue('D' . $fila, 0); // Crédito
+        $sheet->setCellValue('E' . $fila, 'Retención Huérfana: ' . ($item['detalle_error'] ?? 'Sin detalle'));
+        $sheet->setCellValue('F' . $fila, $item['cuenta_contable'] ?? '');
+        $sheet->setCellValue('G' . $fila, $item['nombre_cuenta'] ?? '');
+        $sheet->setCellValue('H' . $fila, $item['socio_negocio'] ?? '');
+        $sheet->setCellValue('I' . $fila, $item['nombre'] ?? '');
+
+        // Aplicar formatos numéricos iguales al reporte SAP
+        $sheet->getStyle('C' . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('D' . $fila)->getNumberFormat()->setFormatCode('#,##0.00');
+        
+        $fila++;
+    }
+
+    // Autoajustar columnas
+    foreach (range('A', 'I') as $columna) {
+        $sheet->getColumnDimension($columna)->setAutoSize(true);
+    }
+
+    $nombreArchivo = 'Insumos_No_Medicos_SAP_' . date('Y_m_d_His') . '.xlsx';
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header('Content-Disposition: attachment; filename="' . $nombreArchivo . '"');
     header('Cache-Control: max-age=0');
 
     $writer = new Xlsx($spreadsheet);

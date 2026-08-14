@@ -149,4 +149,6 @@ Route::post(
     [CuentaController::class, 'guardarDesdeRetencion']
 )->name('maestros.guardar.desde.retencion');
 
+Route::get('/exportar-insumos-no-medicos', [CuentaController::class, 'exportarInsumosNoMedicos'])
+    ->name('exportar.insumos.no.medicos');
 });

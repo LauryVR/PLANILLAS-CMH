@@ -1306,18 +1306,25 @@ document.addEventListener('DOMContentLoaded', function () {
 @endif
 
 @if(session('insumos_sap') && count(session('insumos_sap')) > 0)
-    <!-- BOTONES DE EXPORTACIÓN (Se muestran solo cuando hay datos de SAP) -->
-    <div class="d-flex flex-wrap gap-2 mb-3">
-        <a href="{{ route('exportar.sap.remanente') }}" class="btn btn-warning btn-sm text-dark fw-bold">
-            <i class="fas fa-file-excel me-1"></i> Excel SAP (Remanentes)
-        </a>
-        <a href="{{ route('exportar.sap.pdf.remanente') }}" class="btn btn-danger btn-sm fw-bold">
-            <i class="fas fa-file-pdf me-1"></i> PDF SAP (Remanentes)
-        </a>
-        <a href="{{ route('exportar.reporte.general') }}" class="btn btn-dark btn-sm fw-bold">
-            <i class="fas fa-file-excel me-1"></i> Excel Reporte General (Maestro)
-        </a>
-    </div>
+<!-- BOTONES DE EXPORTACIÓN -->
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="{{ route('exportar.sap.remanente') }}" class="btn btn-warning btn-sm text-dark fw-bold">
+        <i class="fas fa-file-excel me-1"></i> Excel SAP (Remanentes)
+    </a>
+    
+    <a href="{{ route('exportar.sap.pdf.remanente') }}" class="btn btn-danger btn-sm fw-bold">
+        <i class="fas fa-file-pdf me-1"></i> PDF SAP (Remanentes)
+    </a>
+    
+    <a href="{{ route('exportar.reporte.general') }}" class="btn btn-dark btn-sm fw-bold">
+        <i class="fas fa-file-excel me-1"></i> Excel Reporte General (Maestro)
+    </a>
+
+    <!-- NUEVO BOTÓN -->
+    <a href="{{ route('exportar.insumos.no.medicos') }}" class="btn btn-info btn-sm text-white fw-bold">
+        <i class="fas fa-file-excel me-1"></i> Excel Insumos No Médicos
+    </a>
+</div>
 
 <!-- TABLA INSUMOS SAP (AZUL) -->
 <div class="card shadow-sm border-0 mb-4 mt-2">
