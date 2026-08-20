@@ -17,21 +17,18 @@ class CuentaController extends Controller
 {
     /**
      * Muestra la vista principal.
-     */
-public function index()
+     */public function index()
 {
     $tiposCuenta = DB::table('tipos_cuenta')
-                 ->where('activo', 1)
-                 ->orderBy('nombre', 'asc')
-                 ->get();
+        ->where('activo', 1)
+        ->orderBy('nombre', 'asc')
+        ->get();
 
-    // Obtenemos los IDs únicos de motores que sí existen en tu tabla actual
     $idsMotores = DB::table('detalle_motor_configs')
-                    ->select('motor_retencion_id')
-                    ->distinct()
-                    ->pluck('motor_retencion_id');
+        ->select('motor_retencion_id')
+        ->distinct()
+        ->pluck('motor_retencion_id');
 
-    // Diccionario para asociar cada ID con su respectivo nombre de institución
     $nombresEntes = [
         1 => 'Secretaría de Salud (SESAL)',
         2 => 'Instituto Hondureño de Seguridad Social (IHSS)',
@@ -39,11 +36,10 @@ public function index()
         4 => 'Hospital María',
         5 => 'Ministerio Público',
         6 => 'Universidad Autónoma de Honduras (UNAH)',
-        // Puedes agregar más números de ID según los que tengas registrados
     ];
 
-    // Construimos la lista final con el ID y su nombre correspondiente
     $motoresRetencion = [];
+
     foreach ($idsMotores as $id) {
         $motoresRetencion[] = (object)[
             'motor_retencion_id' => $id,
@@ -51,16 +47,24 @@ public function index()
         ];
     }
 
-    $datos = session('datos', []); 
+    // Datos completos en sesión
+    $datosCompletos = session('datos', []);
+
+    // Solo mostrar 500 registros en pantalla
+    $datos = collect($datosCompletos)->take(500)->values();
+
     $retenciones = session('retenciones_cargadas', []);
     $entesRetenedores = session('entes_retenedores', []);
 
+    $totalRegistros = count($datosCompletos);
+
     return view('maestros.cuentas', compact(
-        'tiposCuenta', 
-        'motoresRetencion', 
-        'datos', 
-        'retenciones', 
-        'entesRetenedores'
+        'tiposCuenta',
+        'motoresRetencion',
+        'datos',
+        'retenciones',
+        'entesRetenedores',
+        'totalRegistros'
     ));
 }
 
