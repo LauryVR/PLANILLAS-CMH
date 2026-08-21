@@ -113,7 +113,7 @@
     </div>
 
     <div class="card-body">
-         route('gestionar.motor.entes') }}" method="POST">
+        <form action="{{ route('gestionar.motor.entes') }}" method="POST">
             @csrf
 
             <div class="row align-items-end">
