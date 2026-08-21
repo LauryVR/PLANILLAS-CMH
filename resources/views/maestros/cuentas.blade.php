@@ -111,26 +111,39 @@
             <i class="fas fa-cogs me-2"></i> Gestión de Motores de Cálculo por Ente
         </h5>
     </div>
+
     <div class="card-body">
-        <form action="{{ route('gestionar.motor.entes') }}" method="POST">
+         route('gestionar.motor.entes') }}" method="POST">
             @csrf
-            
+
             <div class="row align-items-end">
                 <div class="col-md-8">
-                    <label for="motor_retencion_id" class="form-label fw-bold">Seleccione el Motor de Retención</label>
-                   <select class="form-select" id="motor_retencion_id" name="motor_retencion_id" required>
-    <option value="" selected disabled>-- Seleccione una institución / ente --</option>
-    @foreach($motoresRetencion ?? [] as $motor)
-        <option value="{{ $motor->motor_retencion_id ?? $motor->id }}">
-            {{ $motor->nombre }}
-        </option>
-    @endforeach
-</select>
+                    <label for="motor_retencion_id" class="form-label fw-bold">
+                        Seleccione el Motor de Retención
+                    </label>
+
+                    <select
+                        class="form-select"
+                        id="motor_retencion_id"
+                        name="motor_retencion_id"
+                        required
+                    >
+                        <option value="" selected disabled>
+                            -- Seleccione una institución / ente --
+                        </option>
+
+                        @foreach($motoresRetencion as $motor)
+                            <option value="{{ $motor->motor_retencion_id }}">
+                                {{ $motor->nombre }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-play me-1"></i> Ejecutar Motor
+                        <i class="fas fa-play me-1"></i>
+                        Ejecutar Motor
                     </button>
                 </div>
             </div>

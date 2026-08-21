@@ -24,28 +24,21 @@ class CuentaController extends Controller
         ->orderBy('nombre', 'asc')
         ->get();
 
-    $idsMotores = DB::table('detalle_motor_configs')
-        ->select('motor_retencion_id')
+    $motoresRetencion = DB::table('detalle_motor_configs as d')
+        ->join(
+            'entes_retencion as e',
+            'e.ente_retencion_id',
+            '=',
+            'd.motor_retencion_id'
+        )
+        ->select(
+            'd.motor_retencion_id',
+            'e.nombre'
+        )
+        ->where('e.activo', 1)
         ->distinct()
-        ->pluck('motor_retencion_id');
-
-    $nombresEntes = [
-        1 => 'Secretaría de Salud (SESAL)',
-        2 => 'Instituto Hondureño de Seguridad Social (IHSS)',
-        3 => 'Hospital Escuela',
-        4 => 'Hospital María',
-        5 => 'Ministerio Público',
-        6 => 'Universidad Autónoma de Honduras (UNAH)',
-    ];
-
-    $motoresRetencion = [];
-
-    foreach ($idsMotores as $id) {
-        $motoresRetencion[] = (object)[
-            'motor_retencion_id' => $id,
-            'nombre' => $nombresEntes[$id] ?? "Ente / Motor General (ID: {$id})"
-        ];
-    }
+        ->orderBy('e.nombre', 'asc')
+        ->get();
 
     // Datos completos en sesión
     $datosCompletos = session('datos', []);
