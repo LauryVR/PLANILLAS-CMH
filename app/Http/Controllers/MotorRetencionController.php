@@ -247,11 +247,7 @@ public function previsualizar(Request $request)
             'size_mb' => round($request->file('archivo')->getSize() / 1024 / 1024, 2)
         ]);
 
-        \Log::info('ANTES DE LEER EXCEL');
-
         $collection = Excel::toCollection(null, $request->file('archivo'));
-
-        \Log::info('DESPUES DE LEER EXCEL');
 
         if ($collection->isEmpty() || !isset($collection[0])) {
             return response()->json([
@@ -259,16 +255,11 @@ public function previsualizar(Request $request)
             ], 400);
         }
 
-        $filas = $collection[0];
-
-        \Log::info('Filas leídas', [
-            'cantidad' => $filas->count()
-        ]);
+        // SOLO PRIMERAS 200 FILAS PARA PREVISUALIZACIÓN
+        $filas = $collection[0]->take(200);
 
         $resultado = [];
         $tieneErrores = false;
-        $dnisVistos = [];
-        $filasDuplicadas = [];
         $dnisArchivo = [];
 
         foreach ($filas as $index => $row) {
@@ -288,38 +279,7 @@ public function previsualizar(Request $request)
             }
 
             $dnisArchivo[] = $dni;
-
-            $numeroFilaExcel = $index + 1;
-
-            if (isset($dnisVistos[$dni])) {
-
-                $filasDuplicadas[] = $numeroFilaExcel;
-
-                $primeraFila = $dnisVistos[$dni];
-
-                if (!in_array($primeraFila, $filasDuplicadas)) {
-                    $filasDuplicadas[] = $primeraFila;
-                }
-
-            } else {
-
-                $dnisVistos[$dni] = $numeroFilaExcel;
-            }
         }
-
-        if (!empty($filasDuplicadas)) {
-
-            sort($filasDuplicadas);
-
-            return response()->json([
-                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' . implode(', ', $filasDuplicadas),
-                'tiene_errores' => true
-            ], 422);
-        }
-
-        \Log::info('Consultando maestros', [
-            'dnis' => count(array_unique($dnisArchivo))
-        ]);
 
         $maestros = Maestro::whereIn('dni', array_unique($dnisArchivo))
             ->get()
@@ -368,14 +328,10 @@ public function previsualizar(Request $request)
             ];
         }
 
-        \Log::info('Resultado generado', [
-            'total' => count($resultado),
-            'memoria_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
-        ]);
-
         return response()->json([
-            'data' => array_slice($resultado, 0, 100),
+            'data' => $resultado,
             'total_registros' => count($resultado),
+            'previsualizacion_limitada' => true,
             'tiene_errores' => $tieneErrores
         ]);
 
@@ -391,6 +347,7 @@ public function previsualizar(Request $request)
             'error' => $e->getMessage()
         ], 500);
     }
+}
 }
     /**
      * Nuevo método para cargar datos mediante AJAX para la tabla
