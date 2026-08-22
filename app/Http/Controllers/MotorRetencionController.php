@@ -46,6 +46,9 @@ class MotorRetencionController extends Controller
     }
 public function importar(Request $request)
 {
+    set_time_limit(0);
+    ini_set('memory_limit', '1024M');
+
     $request->validate([
         'motor_retencion_id' => 'required|exists:motores_retencion,id',
         'archivo' => 'required|mimes:xlsx,xls,csv'
@@ -67,13 +70,14 @@ public function importar(Request $request)
 
         $filas = $data[0];
 
-        $dnisInvalidos = [];
-        $dnisEnArchivo = [];
+        /*
+         * Obtener todos los DNIs del Excel
+         */
+        $dnisExcel = [];
 
-        // VALIDAR DNIs
         foreach ($filas as $index => $row) {
 
-            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+            if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
                 continue;
             }
 
@@ -87,38 +91,58 @@ public function importar(Request $request)
                 $dni = '0' . $dni;
             }
 
-            if (!Maestro::where('dni', $dni)->exists()) {
+            $dnisExcel[] = $dni;
+        }
 
+        $dnisExcel = array_unique($dnisExcel);
+
+        /*
+         * Consultar TODOS los maestros en una sola consulta
+         */
+        $maestros = Maestro::whereIn('dni', $dnisExcel)
+            ->get()
+            ->keyBy('dni');
+
+        /*
+         * Validar DNIs inexistentes
+         */
+        $dnisInvalidos = [];
+
+        foreach ($dnisExcel as $dni) {
+
+            if (!isset($maestros[$dni])) {
                 $dnisInvalidos[] = $dni;
-
-            } else {
-
-                $dnisEnArchivo[] = $dni;
-
             }
         }
 
         if (!empty($dnisInvalidos)) {
 
-            $listaDnis = implode(', ', array_unique($dnisInvalidos));
-
             return back()->with(
                 'error',
-                'Carga cancelada. Los siguientes DNIs no están registrados: ' . $listaDnis
+                'Carga cancelada. Los siguientes DNIs no están registrados: ' .
+                implode(', ', $dnisInvalidos)
             );
         }
 
-        DB::transaction(function () use ($filas, $motorId, $dnisEnArchivo) {
+        DB::transaction(function () use (
+            $filas,
+            $motorId,
+            $dnisExcel,
+            $maestros
+        ) {
 
-            // Eliminar los que ya no existen en el Excel
+            /*
+             * Eliminar registros que ya no están en el Excel
+             */
             DetalleMotorConfig::where('motor_retencion_id', $motorId)
-                ->whereNotIn('dni', $dnisEnArchivo)
+                ->whereNotIn('dni', $dnisExcel)
                 ->delete();
 
-            // Insertar / Actualizar
+            $registros = [];
+
             foreach ($filas as $index => $row) {
 
-                if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+                if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
                     continue;
                 }
 
@@ -132,35 +156,61 @@ public function importar(Request $request)
                     $dni = '0' . $dni;
                 }
 
-                $maestro = Maestro::where('dni', $dni)->first();
+                $maestro = $maestros[$dni] ?? null;
 
                 if (!$maestro) {
                     continue;
                 }
 
-                DetalleMotorConfig::updateOrCreate(
+                $registros[] = [
+
+                    'motor_retencion_id' => $motorId,
+                    'dni' => $dni,
+
+                    'colegiado_nombre' => $maestro->nombre ?? 'N/A',
+                    'numero_colegiado' => $maestro->no_colegiado ?? 'N/A',
+
+                    'cuota_colegial'   => $row[1] ?? 0,
+                    'automaticos'      => $row[2] ?? 0,
+                    'estudio'          => $row[3] ?? 0,
+                    'refinanciamiento' => $row[4] ?? 0,
+                    'readecuacion'     => $row[5] ?? 0,
+                    'personal'         => $row[6] ?? 0,
+                    'compra_deuda'     => $row[7] ?? 0,
+                    'hipotecario'      => $row[8] ?? 0,
+                    'vehiculo'         => $row[9] ?? 0,
+                    'empleado'         => $row[10] ?? 0,
+
+                    'updated_by' => Auth::id(),
+
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            /*
+             * Procesar en bloques de 500
+             */
+            foreach (array_chunk($registros, 500) as $bloque) {
+
+                DetalleMotorConfig::upsert(
+                    $bloque,
+                    ['motor_retencion_id', 'dni'],
                     [
-                        'motor_retencion_id' => $motorId,
-                        'dni' => $dni
-                    ],
-                    [
-                        'colegiado_nombre' => $maestro->nombre ?? 'N/A',
-                        'numero_colegiado' => $maestro->no_colegiado ?? 'N/A',
-
-                        'cuota_colegial'   => $row[1] ?? 0,
-                        'automaticos'      => $row[2] ?? 0,
-                        'estudio'          => $row[3] ?? 0,
-                        'refinanciamiento' => $row[4] ?? 0,
-                        'readecuacion'     => $row[5] ?? 0,
-                        'personal'         => $row[6] ?? 0,
-                        'compra_deuda'     => $row[7] ?? 0,
-                        'hipotecario'      => $row[8] ?? 0,
-                        'vehiculo'         => $row[9] ?? 0,
-
-                        // NUEVO CAMPO
-                        'empleado'         => $row[10] ?? 0,
-
-                        'updated_by'       => Auth::id(),
+                        'colegiado_nombre',
+                        'numero_colegiado',
+                        'cuota_colegial',
+                        'automaticos',
+                        'estudio',
+                        'refinanciamiento',
+                        'readecuacion',
+                        'personal',
+                        'compra_deuda',
+                        'hipotecario',
+                        'vehiculo',
+                        'empleado',
+                        'updated_by',
+                        'updated_at'
                     ]
                 );
             }
@@ -168,10 +218,10 @@ public function importar(Request $request)
 
         return back()->with(
             'success',
-            'Carga masiva procesada con éxito. Se actualizaron los registros y se eliminaron los ausentes en el archivo.'
+            'Carga masiva procesada con éxito.'
         );
 
-    } catch (Exception $e) {
+    } catch (\Exception $e) {
 
         return back()->with(
             'error',
@@ -181,7 +231,6 @@ public function importar(Request $request)
 }
 public function previsualizar(Request $request)
 {
-    // 1. Validación de recepción de archivo
     if (!$request->hasFile('archivo')) {
         return response()->json([
             'error' => 'No se recibió ningún archivo'
@@ -190,7 +239,6 @@ public function previsualizar(Request $request)
 
     try {
 
-        // 2. Procesamiento del archivo Excel
         $data = Excel::toArray([], $request->file('archivo'));
 
         if (empty($data) || !isset($data[0])) {
@@ -203,14 +251,17 @@ public function previsualizar(Request $request)
         $resultado = [];
         $tieneErrores = false;
 
-        // Arrays para control de DNIs duplicados
         $dnisVistos = [];
         $filasDuplicadas = [];
+        $dnisArchivo = [];
 
-        // 3. PRIMERA PASADA: Validar DNIs duplicados
+        /*
+         * PRIMERA PASADA
+         * Validar duplicados y recolectar DNIs
+         */
         foreach ($filas as $index => $row) {
 
-            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+            if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
                 continue;
             }
 
@@ -223,6 +274,8 @@ public function previsualizar(Request $request)
             if (strlen($dni) === 12) {
                 $dni = '0' . $dni;
             }
+
+            $dnisArchivo[] = $dni;
 
             $numeroFilaExcel = $index + 1;
 
@@ -242,21 +295,33 @@ public function previsualizar(Request $request)
             }
         }
 
-        // Hay duplicados
         if (!empty($filasDuplicadas)) {
 
             sort($filasDuplicadas);
 
             return response()->json([
-                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' . implode(', ', $filasDuplicadas),
+                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' .
+                    implode(', ', $filasDuplicadas),
                 'tiene_errores' => true
             ], 422);
         }
 
-        // 4. SEGUNDA PASADA
+        /*
+         * UNA SOLA CONSULTA A MAESTRO
+         */
+        $maestros = Maestro::whereIn(
+                'dni',
+                array_unique($dnisArchivo)
+            )
+            ->get()
+            ->keyBy('dni');
+
+        /*
+         * SEGUNDA PASADA
+         */
         foreach ($filas as $index => $row) {
 
-            if ($index === 0 && strtolower($row[0] ?? '') == 'dni') {
+            if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
                 continue;
             }
 
@@ -270,7 +335,7 @@ public function previsualizar(Request $request)
                 $dni = '0' . $dni;
             }
 
-            $maestro = Maestro::where('dni', $dni)->first();
+            $maestro = $maestros[$dni] ?? null;
 
             $esValido = $maestro !== null;
 
@@ -278,30 +343,34 @@ public function previsualizar(Request $request)
                 $tieneErrores = true;
             }
 
-            // Construcción del arreglo de respuesta
             $resultado[] = [
-                'id'                => uniqid(),
-                'dni'               => $dni,
-                'numero_colegiado'  => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
-                'nombre'            => $maestro ? $maestro->nombre : 'NO REGISTRADO',
-                'es_valido'         => $esValido,
+                'id' => uniqid(),
 
-                'cuota'             => $row[1] ?? 0,
-                'auto'              => $row[2] ?? 0,
-                'estudio'           => $row[3] ?? 0,
-                'refi'              => $row[4] ?? 0,
-                'readecuacion'      => $row[5] ?? 0,
-                'personal'          => $row[6] ?? 0,
-                'compra_deuda'      => $row[7] ?? 0,
-                'hipotecario'       => $row[8] ?? 0,
-                'vehiculo'          => $row[9] ?? 0,
+                'dni' => $dni,
 
-                // NUEVA COLUMNA
-                'empleado'          => $row[10] ?? 0,
+                'numero_colegiado' => $maestro
+                    ? $maestro->no_colegiado
+                    : 'NO ENCONTRADO',
+
+                'nombre' => $maestro
+                    ? $maestro->nombre
+                    : 'NO REGISTRADO',
+
+                'es_valido' => $esValido,
+
+                'cuota' => $row[1] ?? 0,
+                'auto' => $row[2] ?? 0,
+                'estudio' => $row[3] ?? 0,
+                'refi' => $row[4] ?? 0,
+                'readecuacion' => $row[5] ?? 0,
+                'personal' => $row[6] ?? 0,
+                'compra_deuda' => $row[7] ?? 0,
+                'hipotecario' => $row[8] ?? 0,
+                'vehiculo' => $row[9] ?? 0,
+                'empleado' => $row[10] ?? 0,
             ];
         }
 
-        // 6. Retorno
         return response()->json([
             'data' => $resultado,
             'tiene_errores' => $tieneErrores
@@ -312,7 +381,6 @@ public function previsualizar(Request $request)
         return response()->json([
             'error' => 'Ocurrió un error al procesar el archivo: ' . $e->getMessage()
         ], 500);
-
     }
 }
 
