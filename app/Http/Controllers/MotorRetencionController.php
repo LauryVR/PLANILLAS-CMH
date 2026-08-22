@@ -239,6 +239,8 @@ public function previsualizar(Request $request)
 
     try {
 
+        ini_set('memory_limit', '1024M');
+
         $data = Excel::toArray([], $request->file('archivo'));
 
         if (empty($data) || !isset($data[0])) {
@@ -255,10 +257,7 @@ public function previsualizar(Request $request)
         $filasDuplicadas = [];
         $dnisArchivo = [];
 
-        /*
-         * PRIMERA PASADA
-         * Validar duplicados y recolectar DNIs
-         */
+        // PRIMERA PASADA
         foreach ($filas as $index => $row) {
 
             if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
@@ -306,19 +305,14 @@ public function previsualizar(Request $request)
             ], 422);
         }
 
-        /*
-         * UNA SOLA CONSULTA A MAESTRO
-         */
         $maestros = Maestro::whereIn(
-                'dni',
-                array_unique($dnisArchivo)
-            )
-            ->get()
-            ->keyBy('dni');
+            'dni',
+            array_unique($dnisArchivo)
+        )
+        ->get()
+        ->keyBy('dni');
 
-        /*
-         * SEGUNDA PASADA
-         */
+        // SEGUNDA PASADA
         foreach ($filas as $index => $row) {
 
             if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
@@ -371,12 +365,16 @@ public function previsualizar(Request $request)
             ];
         }
 
+        // SOLO ENVIAR 100 REGISTROS A LA VISTA
         return response()->json([
-            'data' => $resultado,
+            'data' => array_slice($resultado, 0, 100),
+            'total_registros' => count($resultado),
             'tiene_errores' => $tieneErrores
         ]);
 
     } catch (\Exception $e) {
+
+        \Log::error($e);
 
         return response()->json([
             'error' => 'Ocurrió un error al procesar el archivo: ' . $e->getMessage()
