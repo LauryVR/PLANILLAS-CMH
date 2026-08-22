@@ -40,48 +40,55 @@
     </div>
 @endif
 
-    <div class="row mb-4">
-        {{-- Formulario de Carga --}}
-        <div class="col-lg-6 mb-4 mb-lg-0">
-            <div class="card border-0 shadow-sm rounded-4 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex align-items-center mb-3">
-                        <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success me-3">
-                            <i class="fas fa-file-excel fa-lg"></i>
-                        </div>
-                        <h5 class="fw-bold mb-0">Subir Archivo Excel o CSV</h5>
+  <div class="row mb-4">
+    {{-- Formulario de Carga y Previsualización --}}
+    <div class="col-lg-6 mb-4 mb-lg-0">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success me-3">
+                        <i class="fas fa-file-excel fa-lg"></i>
                     </div>
-                    
-                    <form action="{{ route('motor.importar') }}" method="POST" enctype="multipart/form-data" id="form-importar">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="motor_retencion_id_upload" class="form-label fw-semibold small text-secondary">Seleccione el Motor Configurado (Ente Retenedor):</label>
-                            <select name="motor_retencion_id" id="motor_retencion_id_upload" class="form-select" required>
-                                <option value="">-- Seleccione Motor y Ente --</option>
-                                @foreach($motores as $motor)
-                                    <option value="{{ $motor->id }}">
-                                        {{ $motor->nombre_motor }} (Ente: {{ $motor->enteRetencion->nombre ?? 'N/A' }})
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="archivo" class="form-label fw-semibold small text-secondary">Archivo :</label>
-                            <input type="file" name="archivo" id="archivo" class="form-control" accept=".xlsx, .xls, .csv" required>
-                        </div>
-
-                        <button type="button" id="btn-previsualizar" class="btn btn-info text-white w-100 fw-bold py-2 shadow-sm rounded-pill mb-2">
-                            <i class="fas fa-eye me-2"></i> Previsualizar Datos
-                        </button>
-
-                        <button type="submit" id="btn-procesar" class="btn btn-primary w-100 fw-bold py-2 shadow-sm rounded-pill" style="display: none;">
-                            <i class="fas fa-upload me-2"></i> Confirmar y Procesar Carga Masiva
-                        </button>
-                    </form>
+                    <h5 class="fw-bold mb-0">Subir Archivo Excel o CSV</h5>
                 </div>
+                
+                <!-- Selector de Motor y Archivo (Fuera del form de acción final si deseas controlarlo por JS, o mantenlo controlado) -->
+                <div class="mb-3">
+                    <label for="motor_retencion_id_upload" class="form-label fw-semibold small text-secondary">Seleccione el Motor Configurado (Ente Retenedor):</label>
+                    <select name="motor_retencion_id" id="motor_retencion_id_upload" class="form-select" required>
+                        <option value="">-- Seleccione Motor y Ente --</option>
+                        @foreach($motores as $motor)
+                            <option value="{{ $motor->id }}">
+                                {{ $motor->nombre_motor }} (Ente: {{ $motor->enteRetencion->nombre ?? 'N/A' }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="archivo" class="form-label fw-semibold small text-secondary">Archivo :</label>
+                    <input type="file" name="archivo" id="archivo" class="form-control" accept=".xlsx, .xls, .csv" required>
+                </div>
+
+                {{-- Botón de Previsualización Independiente --}}
+                <button type="button" id="btn-previsualizar" class="btn btn-info text-white w-100 fw-bold py-2 shadow-sm rounded-pill mb-2">
+                    <i class="fas fa-eye me-2"></i> Previsualizar Datos
+                </button>
+
+                {{-- Formulario exclusivo para la carga masiva final --}}
+                <form action="{{ route('motor.importar') }}" method="POST" enctype="multipart/form-data" id="form-importar">
+                    @csrf
+                    <!-- Campos ocultos necesarios para enviar el motor y archivo en la importación final si es requerido -->
+                    <input type="hidden" name="motor_retencion_id" id="hidden_motor_id">
+                    
+                    <button type="submit" id="btn-procesar" class="btn btn-primary w-100 fw-bold py-2 shadow-sm rounded-pill" style="display: none;">
+                        <i class="fas fa-upload me-2"></i> Confirmar y Procesar Carga Masiva
+                    </button>
+                </form>
             </div>
         </div>
+    </div>
+</div>
 
         {{-- Guía de Formato del Excel --}}
         <div class="col-lg-6">
@@ -522,10 +529,14 @@
                 tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando ${fileInput.files[0].name} (esto puede tomar unos segundos)...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
-                fetch('{{ route("motor.previsualizar") }}', {
-                    method: 'POST',
-                    body: formData
-                })
+              fetch('{{ route("motor.previsualizar") }}', {
+    method: 'POST',
+    headers: {
+        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        'Accept': 'application/json'
+    },
+    body: formData
+})
                 .then(async response => {
                     const text = await response.text();
                     let json;
