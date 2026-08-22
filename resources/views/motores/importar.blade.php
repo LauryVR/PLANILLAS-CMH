@@ -377,7 +377,7 @@
 </div>
 @endsection
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
     // Variables globales para la paginación
     let todosLosRegistrosHtml = [];
@@ -529,14 +529,14 @@
                 tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando ${fileInput.files[0].name} (esto puede tomar unos segundos)...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
-              fetch('{{ route("motor.previsualizar") }}', {
-    method: 'POST',
-    headers: {
-        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-        'Accept': 'application/json'
-    },
-    body: formData
-})
+                fetch('/motores/previsualizar', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                })
                 .then(async response => {
                     const text = await response.text();
                     let json;
@@ -640,7 +640,7 @@
                     } else if (filasConDuplicados.length > 0) {
                         if (btnProcesar) btnProcesar.style.display = 'none';
                         if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
-                        let filasTexto = filasConDuplicados.slice(0, 20).join(', '); // Muestra hasta 20 filas para evitar saturar el aviso
+                        let filasTexto = filasConDuplicados.slice(0, 20).join(', ');
                         mostrarNotificacion("Atención: DNIs Duplicados", `Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las filas: <strong>${filasTexto}</strong>${filasConDuplicados.length > 20 ? ' (y más...)' : ''}.`, true);
                     } else if (tieneErrores) {
                         if (btnProcesar) btnProcesar.style.display = 'none';
@@ -727,7 +727,7 @@
                                 <td><input type="number" name="detalles[${item.id}][personal]" value="${item.personal ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bond-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][empleado]" value="${item.empleado ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td class="text-center text-nowrap">
                                     <div class="small text-muted" style="font-size: 0.75rem;">${fechaFormateada}</div>
@@ -747,7 +747,6 @@
         }
     });
 </script>
-
 @push('scripts')
 <style>
     /* Ocultar flechas en inputs de tipo número (Chrome, Safari, Edge, Opera) */
