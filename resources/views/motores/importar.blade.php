@@ -375,7 +375,7 @@
     // Variables globales para la paginación
     let todosLosRegistrosHtml = [];
     let paginaActual = 1;
-    let registrosPorPagina = 10; // Puedes cambiar la cantidad de filas por página aquí
+    let registrosPorPagina = 10; // Cantidad de filas por página en la tabla visual
 
     function renderizarTablaPaginada() {
         let tbody = document.getElementById('contenido-detalles');
@@ -430,7 +430,7 @@
         });
         ulLinks.appendChild(liAnterior);
 
-        // Botones numéricos (limitados para no saturar si son muchas páginas)
+        // Botones numéricos limitados
         let maxBotones = 5;
         let inicioPag = Math.max(1, paginaActual - Math.floor(maxBotones / 2));
         let finPag = Math.min(totalPaginas, inicioPag + maxBotones - 1);
@@ -519,7 +519,7 @@
                 formData.append('motor_retencion_id', motorId);
                 formData.append('_token', '{{ csrf_token() }}');
 
-                tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando ${fileInput.files[0].name} (esto puede tomar unos segundos)...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
                 fetch('{{ route("motor.previsualizar") }}', {
@@ -562,7 +562,7 @@
                     let filasConDuplicados = [];
 
                     filasData.forEach((item, index) => {
-                        let numeroFilaExcel = index + 2; // Fila real en Excel (asumiendo cabecera en fila 1)
+                        let numeroFilaExcel = index + 2; 
                         let dniLimpio = item.dni ? String(item.dni).trim() : '';
 
                         if (dniLimpio) {
@@ -629,8 +629,8 @@
                     } else if (filasConDuplicados.length > 0) {
                         if (btnProcesar) btnProcesar.style.display = 'none';
                         if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
-                        let filasTexto = filasConDuplicados.join(', ');
-                        mostrarNotificacion("Atención: DNIs Duplicados", `Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: <strong>${filasTexto}</strong>.`, true);
+                        let filasTexto = filasConDuplicados.slice(0, 20).join(', '); // Muestra hasta 20 filas para evitar saturar el aviso
+                        mostrarNotificacion("Atención: DNIs Duplicados", `Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las filas: <strong>${filasTexto}</strong>${filasConDuplicados.length > 20 ? ' (y más...)' : ''}.`, true);
                     } else if (tieneErrores) {
                         if (btnProcesar) btnProcesar.style.display = 'none';
                         if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
@@ -642,7 +642,7 @@
                             btnGuardarMasivo.disabled = false;
                         }
                         btnPrevisualizar.style.display = 'none';
-                        mostrarNotificacion("Previsualización Lista", "El archivo se ha cruzado y leído correctamente.");
+                        mostrarNotificacion("Previsualización Lista", `Se han cargado y cruzado ${contador} registros correctamente.`);
                     }
                 })
                 .catch(error => {
@@ -690,7 +690,6 @@
                         data.forEach(item => {
                             let tr = document.createElement('tr');
                             
-                            // Formatear la fecha si existe
                             let fechaFormateada = '-';
                             if (item.updated_at) {
                                 let fecha = new Date(item.updated_at);
@@ -717,7 +716,7 @@
                                 <td><input type="number" name="detalles[${item.id}][personal]" value="${item.personal ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
-                                <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                                <td><input type="number" name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bond-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td><input type="number" name="detalles[${item.id}][empleado]" value="${item.empleado ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
                                 <td class="text-center text-nowrap">
                                     <div class="small text-muted" style="font-size: 0.75rem;">${fechaFormateada}</div>

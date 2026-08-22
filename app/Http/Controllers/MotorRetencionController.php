@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-use PhpOffice\PhpSpreadsheet\IOFactory;
+
 use Illuminate\Http\Request;
 use App\Models\MotorRetencion;
 use App\Models\DetalleMotorConfig;
@@ -14,7 +14,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping; 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
-
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Exception;
 
 class MotorRetencionController extends Controller
@@ -231,64 +231,131 @@ public function importar(Request $request)
 }
 
 
-
 public function previsualizar(Request $request)
 {
+    if (!$request->hasFile('archivo')) {
+        return response()->json([
+            'error' => 'No se recibió ningún archivo'
+        ], 400);
+    }
+
     try {
+        ini_set('memory_limit', '512M');
+        set_time_limit(300);
 
         $archivo = $request->file('archivo');
 
-        \Log::info('ANTES DE CARGAR');
+        \Log::info('INICIO PREVISUALIZACION', [
+            'archivo' => $archivo->getClientOriginalName(),
+            'size_mb' => round($archivo->getSize() / 1024 / 1024, 2)
+        ]);
 
-        $reader = IOFactory::createReaderForFile(
-            $archivo->getRealPath()
-        );
-
+        // Lectura optimizada con PhpSpreadsheet para manejar miles de filas sin agotar la memoria
+        $filePath = $archivo->getRealPath();
+        $reader = IOFactory::createReaderForFile($filePath);
         $reader->setReadDataOnly(true);
+        $reader->setReadEmptyCells(false);
 
-        $spreadsheet = $reader->load(
-            $archivo->getRealPath()
-        );
+        $spreadsheet = $reader->load($filePath);
+        $worksheet = $spreadsheet->getActiveSheet();
+        $rows = $worksheet->toArray(null, true, true, true);
 
-        \Log::info('DESPUES DE CARGAR');
-
-        $sheet = $spreadsheet->getActiveSheet();
+        if (empty($rows)) {
+            return response()->json([
+                'error' => 'El archivo está vacío o no tiene formato válido'
+            ], 400);
+        }
 
         $resultado = [];
-        $fila = 0;
+        $tieneErrores = false;
+        $dnisArchivo = [];
 
-        foreach ($sheet->getRowIterator() as $row) {
-
-            if ($fila >= 100) {
-                break;
+        // 1. Recolección y limpieza de DNIs (saltando la cabecera en la fila 1)
+        foreach ($rows as $index => $row) {
+            if ($index === 1 && strtolower(trim($row['A'] ?? '')) === 'dni') {
+                continue;
             }
 
-            $cells = [];
-
-            foreach ($row->getCellIterator() as $cell) {
-                $cells[] = $cell->getValue();
+            $dni = trim($row['A'] ?? '');
+            if (empty($dni)) {
+                continue;
             }
 
-            $resultado[] = $cells;
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
 
-            $fila++;
+            $dnisArchivo[] = $dni;
+        }
+
+        // 2. Consulta masiva a la base de datos (evitando el problema N+1)
+        $maestros = Maestro::whereIn('dni', array_unique($dnisArchivo))
+            ->get()
+            ->keyBy('dni');
+
+        // 3. Mapeo y cruce de datos en memoria
+        foreach ($rows as $index => $row) {
+            if ($index === 1 && strtolower(trim($row['A'] ?? '')) === 'dni') {
+                continue;
+            }
+
+            $dni = trim($row['A'] ?? '');
+            if (empty($dni)) {
+                continue;
+            }
+
+            if (strlen($dni) === 12) {
+                $dni = '0' . $dni;
+            }
+
+            $maestro = $maestros[$dni] ?? null;
+            $esValido = $maestro !== null;
+
+            if (!$esValido) {
+                $tieneErrores = true;
+            }
+
+            $resultado[] = [
+                'id' => uniqid(),
+                'dni' => $dni,
+                'numero_colegiado' => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
+                'nombre' => $maestro ? $maestro->nombre : 'NO REGISTRADO',
+                'es_valido' => $esValido,
+                'cuota' => $row['B'] ?? 0,
+                'auto' => $row['C'] ?? 0,
+                'estudio' => $row['D'] ?? 0,
+                'refi' => $row['E'] ?? 0,
+                'readecuacion' => $row['F'] ?? 0,
+                'personal' => $row['G'] ?? 0,
+                'compra_deuda' => $row['H'] ?? 0,
+                'hipotecario' => $row['I'] ?? 0,
+                'vehiculo' => $row['J'] ?? 0,
+                'empleado' => $row['K'] ?? 0
+            ];
         }
 
         return response()->json([
             'data' => $resultado,
             'total_registros' => count($resultado),
-            'tiene_errores' => false
+            'previsualizacion_limitada' => false,
+            'tiene_errores' => $tieneErrores
         ]);
 
     } catch (\Throwable $e) {
-
-        \Log::error($e);
+        \Log::error('ERROR PREVISUALIZAR', [
+            'mensaje' => $e->getMessage(),
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ]);
 
         return response()->json([
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
+
+
 
     /**
      * Nuevo método para cargar datos mediante AJAX para la tabla
