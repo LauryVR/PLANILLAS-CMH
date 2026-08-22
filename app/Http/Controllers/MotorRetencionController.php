@@ -235,7 +235,9 @@ public function importar(Request $request)
 public function previsualizar(Request $request)
 {
     return response()->json([
-        'ok' => true
+        'data' => [],
+        'total_registros' => 0,
+        'tiene_errores' => false
     ]);
 }
 
