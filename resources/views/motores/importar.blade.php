@@ -522,207 +522,136 @@
                 tbody.innerHTML = `<tr><td colspan="14" class="text-center py-4"><div class="spinner-border text-primary me-2"></div>Procesando y cruzando datos con la base de datos...</td></tr>`;
                 if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
 
-          fetch('{{ route("motor.previsualizar") }}', {
-    method: 'POST',
-    body: formData
-})
-.then(async response => {
+                fetch('{{ route("motor.previsualizar") }}', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(async response => {
+                    const text = await response.text();
+                    let json;
 
-    const text = await response.text();
+                    try {
+                        json = JSON.parse(text);
+                    } catch (e) {
+                        console.error("Respuesta recibida:", text);
+                        throw new Error(`El servidor respondió HTTP ${response.status} y no devolvió JSON válido`);
+                    }
 
-    let json;
+                    if (!response.ok) {
+                        throw new Error(json.error || `Error HTTP ${response.status}`);
+                    }
 
-    try {
-        json = JSON.parse(text);
-    } catch (e) {
+                    return json;
+                })
+                .then(responseObj => {
+                    console.log('JSON recibido:', responseObj);
 
-        console.error('Respuesta del servidor:', text);
+                    todosLosRegistrosHtml = [];
+                    paginaActual = 1;
 
-        throw new Error(
-            `El servidor respondió con HTTP ${response.status} y no devolvió JSON válido.`
-        );
-    }
+                    let contador = 0;
+                    let filasData = responseObj.data || [];
+                    let tieneErrores = responseObj.tiene_errores || false;
 
-    if (!response.ok) {
-        throw new Error(
-            json.error || `Error HTTP ${response.status}`
-        );
-    }
+                    if (!Array.isArray(filasData)) {
+                        filasData = [];
+                    }
 
-    return json;
+                    // Validación local de DNI duplicados en el archivo previsualizado
+                    let dnisVistos = {};
+                    let filasConDuplicados = [];
 
-})
-.then(responseObj => {
+                    filasData.forEach((item, index) => {
+                        let numeroFilaExcel = index + 2; // Fila real en Excel (asumiendo cabecera en fila 1)
+                        let dniLimpio = item.dni ? String(item.dni).trim() : '';
 
-    console.log('Respuesta recibida:', responseObj);
+                        if (dniLimpio) {
+                            if (dnisVistos[dniLimpio]) {
+                                filasConDuplicados.push(numeroFilaExcel);
+                                item.es_valido = false;
+                                
+                                let primeraFila = dnisVistos[dniLimpio];
+                                if (!filasConDuplicados.includes(primeraFila)) {
+                                    filasConDuplicados.push(primeraFila);
+                                }
+                            } else {
+                                dnisVistos[dniLimpio] = numeroFilaExcel;
+                            }
+                        }
+                    });
 
-    todosLosRegistrosHtml = [];
-    paginaActual = 1;
+                    if (filasConDuplicados.length > 0) {
+                        filasConDuplicados.sort((a, b) => a - b);
+                        tieneErrores = true;
+                    }
 
-    let contador = 0;
+                    filasData.forEach(item => {
+                        let tr = document.createElement('tr');
+                        
+                        if (!item.es_valido) {
+                            tr.classList.add('table-danger');
+                        }
 
-    let filasData = responseObj.data || [];
-    let tieneErrores = responseObj.tiene_errores || false;
+                        tr.innerHTML = `
+                            <td>
+                                ${item.dni}
+                                <input type="hidden" name="detalles[${item.id}][dni]" value="${item.dni}">
+                            </td>
+                            <td class="${!item.es_valido ? 'text-danger fw-bold' : ''}">${item.numero_colegiado ?? 'N/A'}</td>
+                            <td class="${!item.es_valido ? 'text-danger fw-bold' : ''}">${item.nombre ?? 'N/A'}</td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][cuota_colegial]" value="${item.cuota ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][automaticos]" value="${item.auto ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][estudio]" value="${item.estudio ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][refinanciamiento]" value="${item.refi ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][readecuacion]" value="${item.readecuacion ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][personal]" value="${item.personal ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][compra_deuda]" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][hipotecario]" value="${item.hipotecario ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][vehiculo]" value="${item.vehiculo ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td><input type="number" ${!item.es_valido ? 'disabled' : ''} name="detalles[${item.id}][empleado]" value="${item.empleado ?? 0}" class="form-control form-control-sm text-center border-0 bg-light p-1" min="0" step="0.01" style="width: 85px;"></td>
+                            <td class="text-center text-nowrap">
+                                <div class="small text-muted" style="font-size: 0.75rem;">-</div>
+                                <span class="badge bg-light text-secondary border" style="font-size: 0.7rem;"><i class="fas fa-user me-1"></i>N/D</span>
+                            </td>
+                        `;
+                        todosLosRegistrosHtml.push(tr);
+                        contador++;
+                    });
 
-    if (!Array.isArray(filasData)) {
-        filasData = [];
-    }
+                    renderizarTablaPaginada();
 
-    let dnisVistos = {};
-    let filasConDuplicados = [];
-
-    filasData.forEach((item, index) => {
-
-        let numeroFilaExcel = index + 2;
-
-        let dniLimpio = item.dni
-            ? String(item.dni).trim()
-            : '';
-
-        if (dniLimpio) {
-
-            if (dnisVistos[dniLimpio]) {
-
-                filasConDuplicados.push(numeroFilaExcel);
-
-                item.es_valido = false;
-
-                let primeraFila = dnisVistos[dniLimpio];
-
-                if (!filasConDuplicados.includes(primeraFila)) {
-                    filasConDuplicados.push(primeraFila);
-                }
-
-            } else {
-
-                dnisVistos[dniLimpio] = numeroFilaExcel;
-            }
+                    let btnProcesar = document.getElementById('btn-procesar');
+                    if (contador === 0) {
+                        tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger py-4">No se encontraron registros válidos.</td></tr>`;
+                        if (btnProcesar) btnProcesar.style.display = 'none';
+                        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
+                        if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
+                    } else if (filasConDuplicados.length > 0) {
+                        if (btnProcesar) btnProcesar.style.display = 'none';
+                        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
+                        let filasTexto = filasConDuplicados.join(', ');
+                        mostrarNotificacion("Atención: DNIs Duplicados", `Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: <strong>${filasTexto}</strong>.`, true);
+                    } else if (tieneErrores) {
+                        if (btnProcesar) btnProcesar.style.display = 'none';
+                        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
+                        mostrarNotificacion("Atención: DNIs No Encontrados", "El archivo contiene números de identidad que no están registrados en el sistema. Las filas resaltadas deben ser corregidas antes de procesar.", true);
+                    } else {
+                        if (btnProcesar) btnProcesar.style.display = 'block';
+                        if (btnGuardarMasivo) {
+                            btnGuardarMasivo.style.display = 'inline-block';
+                            btnGuardarMasivo.disabled = false;
+                        }
+                        btnPrevisualizar.style.display = 'none';
+                        mostrarNotificacion("Previsualización Lista", "El archivo se ha cruzado y leído correctamente.");
+                    }
+                })
+                .catch(error => {
+                    console.error("Error en previsualización:", error);
+                    tbody.innerHTML = `<tr><td colspan="14" class="text-center text-danger py-4">Error al procesar: ${error.message}</td></tr>`;
+                    mostrarNotificacion("Error de Lectura", error.message, true);
+                });
+            });
         }
-    });
-
-    if (filasConDuplicados.length > 0) {
-        filasConDuplicados.sort((a, b) => a - b);
-        tieneErrores = true;
-    }
-
-    filasData.forEach(item => {
-
-        let tr = document.createElement('tr');
-
-        if (!item.es_valido) {
-            tr.classList.add('table-danger');
-        }
-
-        tr.innerHTML = `
-            <td>
-                ${item.dni ?? ''}
-                <input type="hidden" name="detalles[${item.id ?? ''}][dni]" value="${item.dni ?? ''}">
-            </td>
-            <td class="${!item.es_valido ? 'text-danger fw-bold' : ''}">
-                ${item.numero_colegiado ?? 'N/A'}
-            </td>
-            <td class="${!item.es_valido ? 'text-danger fw-bold' : ''}">
-                ${item.nombre ?? 'N/A'}
-            </td>
-            <td><input type="number" value="${item.cuota ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.auto ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.estudio ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.refi ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.readecuacion ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.personal ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.compra_deuda ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.hipotecario ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.vehiculo ?? 0}" class="form-control form-control-sm"></td>
-            <td><input type="number" value="${item.empleado ?? 0}" class="form-control form-control-sm"></td>
-            <td class="text-center text-nowrap">
-                <div class="small text-muted" style="font-size: 0.75rem;">-</div>
-                <span class="badge bg-light text-secondary border">
-                    <i class="fas fa-user me-1"></i>N/D
-                </span>
-            </td>
-        `;
-
-        todosLosRegistrosHtml.push(tr);
-        contador++;
-    });
-
-    renderizarTablaPaginada();
-
-    let btnProcesar = document.getElementById('btn-procesar');
-
-    if (contador === 0) {
-
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="14" class="text-center text-danger py-4">
-                    No se encontraron registros válidos.
-                </td>
-            </tr>
-        `;
-
-        if (btnProcesar) btnProcesar.style.display = 'none';
-        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
-        if (contenedorPaginacion) contenedorPaginacion.style.display = 'none';
-
-    } else if (filasConDuplicados.length > 0) {
-
-        if (btnProcesar) btnProcesar.style.display = 'none';
-        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
-
-        mostrarNotificacion(
-            "Atención: DNIs Duplicados",
-            `Filas duplicadas: ${filasConDuplicados.join(', ')}`,
-            true
-        );
-
-    } else if (tieneErrores) {
-
-        if (btnProcesar) btnProcesar.style.display = 'none';
-        if (btnGuardarMasivo) btnGuardarMasivo.style.display = 'none';
-
-        mostrarNotificacion(
-            "Atención",
-            "Existen registros no encontrados en el sistema.",
-            true
-        );
-
-    } else {
-
-        if (btnProcesar) btnProcesar.style.display = 'block';
-
-        if (btnGuardarMasivo) {
-            btnGuardarMasivo.style.display = 'inline-block';
-            btnGuardarMasivo.disabled = false;
-        }
-
-        btnPrevisualizar.style.display = 'none';
-
-        mostrarNotificacion(
-            "Previsualización Lista",
-            "El archivo fue leído correctamente."
-        );
-    }
-
-})
-.catch(error => {
-
-    console.error("Error en previsualización:", error);
-
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="14" class="text-center text-danger py-4">
-                ${error.message}
-            </td>
-        </tr>
-    `;
-
-    mostrarNotificacion(
-        "Error de Lectura",
-        error.message,
-        true
-    );
-
-});
 
         // Filtrar registros de la base de datos por motor
         const filtroMotor = document.getElementById('filtro_motor_id');
@@ -808,7 +737,6 @@
         }
     });
 </script>
-
 
 @push('scripts')
 <style>
