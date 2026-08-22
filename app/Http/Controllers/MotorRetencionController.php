@@ -239,28 +239,34 @@ public function previsualizar(Request $request)
 
     try {
 
-        ini_set('memory_limit', '1024M');
+        ini_set('memory_limit', '-1');
         set_time_limit(600);
 
-        \Log::info('INICIO PREVISUALIZACION');
+        \Log::info('INICIO PREVISUALIZACION', [
+            'archivo' => $request->file('archivo')->getClientOriginalName(),
+            'size_mb' => round($request->file('archivo')->getSize() / 1024 / 1024, 2)
+        ]);
 
-        $data = Excel::toArray([], $request->file('archivo'));
+        \Log::info('ANTES DE LEER EXCEL');
 
-        if (empty($data) || !isset($data[0])) {
+        $collection = Excel::toCollection(null, $request->file('archivo'));
+
+        \Log::info('DESPUES DE LEER EXCEL');
+
+        if ($collection->isEmpty() || !isset($collection[0])) {
             return response()->json([
                 'error' => 'El archivo está vacío o no tiene formato válido'
             ], 400);
         }
 
-        $filas = $data[0];
+        $filas = $collection[0];
 
         \Log::info('Filas leídas', [
-            'cantidad' => count($filas)
+            'cantidad' => $filas->count()
         ]);
 
         $resultado = [];
         $tieneErrores = false;
-
         $dnisVistos = [];
         $filasDuplicadas = [];
         $dnisArchivo = [];
@@ -306,8 +312,7 @@ public function previsualizar(Request $request)
             sort($filasDuplicadas);
 
             return response()->json([
-                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' .
-                    implode(', ', $filasDuplicadas),
+                'error' => 'Se encontraron números de identidad (DNI) repetidos en el archivo. Revise las siguientes filas: ' . implode(', ', $filasDuplicadas),
                 'tiene_errores' => true
             ], 422);
         }
@@ -316,12 +321,9 @@ public function previsualizar(Request $request)
             'dnis' => count(array_unique($dnisArchivo))
         ]);
 
-        $maestros = Maestro::whereIn(
-            'dni',
-            array_unique($dnisArchivo)
-        )
-        ->get()
-        ->keyBy('dni');
+        $maestros = Maestro::whereIn('dni', array_unique($dnisArchivo))
+            ->get()
+            ->keyBy('dni');
 
         foreach ($filas as $index => $row) {
 
@@ -349,19 +351,10 @@ public function previsualizar(Request $request)
 
             $resultado[] = [
                 'id' => uniqid(),
-
                 'dni' => $dni,
-
-                'numero_colegiado' => $maestro
-                    ? $maestro->no_colegiado
-                    : 'NO ENCONTRADO',
-
-                'nombre' => $maestro
-                    ? $maestro->nombre
-                    : 'NO REGISTRADO',
-
+                'numero_colegiado' => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
+                'nombre' => $maestro ? $maestro->nombre : 'NO REGISTRADO',
                 'es_valido' => $esValido,
-
                 'cuota' => $row[1] ?? 0,
                 'auto' => $row[2] ?? 0,
                 'estudio' => $row[3] ?? 0,
@@ -371,12 +364,13 @@ public function previsualizar(Request $request)
                 'compra_deuda' => $row[7] ?? 0,
                 'hipotecario' => $row[8] ?? 0,
                 'vehiculo' => $row[9] ?? 0,
-                'empleado' => $row[10] ?? 0,
+                'empleado' => $row[10] ?? 0
             ];
         }
 
         \Log::info('Resultado generado', [
-            'total' => count($resultado)
+            'total' => count($resultado),
+            'memoria_mb' => round(memory_get_usage(true) / 1024 / 1024, 2)
         ]);
 
         return response()->json([
