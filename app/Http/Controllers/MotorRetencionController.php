@@ -229,124 +229,14 @@ public function importar(Request $request)
         );
     }
 }
+
+
+
 public function previsualizar(Request $request)
 {
-    if (!$request->hasFile('archivo')) {
-        return response()->json([
-            'error' => 'No se recibió ningún archivo'
-        ], 400);
-    }
-
-    try {
-
-        ini_set('memory_limit', '-1');
-        set_time_limit(600);
-
-        \Log::info('INICIO PREVISUALIZACION', [
-            'archivo' => $request->file('archivo')->getClientOriginalName(),
-            'size_mb' => round($request->file('archivo')->getSize() / 1024 / 1024, 2)
-        ]);
-
-        $collection = Excel::toCollection(null, $request->file('archivo'));
-
-        if ($collection->isEmpty() || !isset($collection[0])) {
-            return response()->json([
-                'error' => 'El archivo está vacío o no tiene formato válido'
-            ], 400);
-        }
-
-        // SOLO PRIMERAS 200 FILAS PARA PREVISUALIZACIÓN
-        $filas = $collection[0]->take(200);
-
-        $resultado = [];
-        $tieneErrores = false;
-        $dnisArchivo = [];
-
-        foreach ($filas as $index => $row) {
-
-            if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
-                continue;
-            }
-
-            $dni = trim($row[0] ?? '');
-
-            if (empty($dni)) {
-                continue;
-            }
-
-            if (strlen($dni) === 12) {
-                $dni = '0' . $dni;
-            }
-
-            $dnisArchivo[] = $dni;
-        }
-
-        $maestros = Maestro::whereIn('dni', array_unique($dnisArchivo))
-            ->get()
-            ->keyBy('dni');
-
-        foreach ($filas as $index => $row) {
-
-            if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
-                continue;
-            }
-
-            $dni = trim($row[0] ?? '');
-
-            if (empty($dni)) {
-                continue;
-            }
-
-            if (strlen($dni) === 12) {
-                $dni = '0' . $dni;
-            }
-
-            $maestro = $maestros[$dni] ?? null;
-
-            $esValido = $maestro !== null;
-
-            if (!$esValido) {
-                $tieneErrores = true;
-            }
-
-            $resultado[] = [
-                'id' => uniqid(),
-                'dni' => $dni,
-                'numero_colegiado' => $maestro ? $maestro->no_colegiado : 'NO ENCONTRADO',
-                'nombre' => $maestro ? $maestro->nombre : 'NO REGISTRADO',
-                'es_valido' => $esValido,
-                'cuota' => $row[1] ?? 0,
-                'auto' => $row[2] ?? 0,
-                'estudio' => $row[3] ?? 0,
-                'refi' => $row[4] ?? 0,
-                'readecuacion' => $row[5] ?? 0,
-                'personal' => $row[6] ?? 0,
-                'compra_deuda' => $row[7] ?? 0,
-                'hipotecario' => $row[8] ?? 0,
-                'vehiculo' => $row[9] ?? 0,
-                'empleado' => $row[10] ?? 0
-            ];
-        }
-
-        return response()->json([
-            'data' => $resultado,
-            'total_registros' => count($resultado),
-            'previsualizacion_limitada' => true,
-            'tiene_errores' => $tieneErrores
-        ]);
-
-    } catch (\Throwable $e) {
-
-        \Log::error('ERROR PREVISUALIZAR', [
-            'mensaje' => $e->getMessage(),
-            'archivo' => $e->getFile(),
-            'linea' => $e->getLine()
-        ]);
-
-        return response()->json([
-            'error' => $e->getMessage()
-        ], 500);
-    }
+    return response()->json([
+        'ok' => true
+    ]);
 }
 
     /**
