@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Illuminate\Http\Request;
 use App\Models\MotorRetencion;
 use App\Models\DetalleMotorConfig;
@@ -234,31 +234,60 @@ public function importar(Request $request)
 
 public function previsualizar(Request $request)
 {
-    \Log::info('PREVISUALIZACION OK');
+    try {
 
-    return response()->json([
-        'data' => [
-            [
-                'id' => 1,
-                'dni' => '0801199012345',
-                'numero_colegiado' => '12345',
-                'nombre' => 'PRUEBA SISTEMA',
-                'es_valido' => true,
-                'cuota' => 100,
-                'auto' => 0,
-                'estudio' => 0,
-                'refi' => 0,
-                'readecuacion' => 0,
-                'personal' => 0,
-                'compra_deuda' => 0,
-                'hipotecario' => 0,
-                'vehiculo' => 0,
-                'empleado' => 0
-            ]
-        ],
-        'total_registros' => 1,
-        'tiene_errores' => false
-    ]);
+        $archivo = $request->file('archivo');
+
+        \Log::info('ANTES DE CARGAR');
+
+        $reader = IOFactory::createReaderForFile(
+            $archivo->getRealPath()
+        );
+
+        $reader->setReadDataOnly(true);
+
+        $spreadsheet = $reader->load(
+            $archivo->getRealPath()
+        );
+
+        \Log::info('DESPUES DE CARGAR');
+
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $resultado = [];
+        $fila = 0;
+
+        foreach ($sheet->getRowIterator() as $row) {
+
+            if ($fila >= 100) {
+                break;
+            }
+
+            $cells = [];
+
+            foreach ($row->getCellIterator() as $cell) {
+                $cells[] = $cell->getValue();
+            }
+
+            $resultado[] = $cells;
+
+            $fila++;
+        }
+
+        return response()->json([
+            'data' => $resultado,
+            'total_registros' => count($resultado),
+            'tiene_errores' => false
+        ]);
+
+    } catch (\Throwable $e) {
+
+        \Log::error($e);
+
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
 }
 
     /**
