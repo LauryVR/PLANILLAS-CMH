@@ -381,7 +381,6 @@ public function previsualizar(Request $request)
         ], 500);
     }
 }
-
     /**
      * Nuevo método para cargar datos mediante AJAX para la tabla
      */
