@@ -240,6 +240,9 @@ public function previsualizar(Request $request)
     try {
 
         ini_set('memory_limit', '1024M');
+        set_time_limit(600);
+
+        \Log::info('INICIO PREVISUALIZACION');
 
         $data = Excel::toArray([], $request->file('archivo'));
 
@@ -250,6 +253,11 @@ public function previsualizar(Request $request)
         }
 
         $filas = $data[0];
+
+        \Log::info('Filas leídas', [
+            'cantidad' => count($filas)
+        ]);
+
         $resultado = [];
         $tieneErrores = false;
 
@@ -257,7 +265,6 @@ public function previsualizar(Request $request)
         $filasDuplicadas = [];
         $dnisArchivo = [];
 
-        // PRIMERA PASADA
         foreach ($filas as $index => $row) {
 
             if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
@@ -305,6 +312,10 @@ public function previsualizar(Request $request)
             ], 422);
         }
 
+        \Log::info('Consultando maestros', [
+            'dnis' => count(array_unique($dnisArchivo))
+        ]);
+
         $maestros = Maestro::whereIn(
             'dni',
             array_unique($dnisArchivo)
@@ -312,7 +323,6 @@ public function previsualizar(Request $request)
         ->get()
         ->keyBy('dni');
 
-        // SEGUNDA PASADA
         foreach ($filas as $index => $row) {
 
             if ($index === 0 && strtolower(trim($row[0] ?? '')) === 'dni') {
@@ -365,19 +375,26 @@ public function previsualizar(Request $request)
             ];
         }
 
-        // SOLO ENVIAR 100 REGISTROS A LA VISTA
+        \Log::info('Resultado generado', [
+            'total' => count($resultado)
+        ]);
+
         return response()->json([
             'data' => array_slice($resultado, 0, 100),
             'total_registros' => count($resultado),
             'tiene_errores' => $tieneErrores
         ]);
 
-    } catch (\Exception $e) {
+    } catch (\Throwable $e) {
 
-        \Log::error($e);
+        \Log::error('ERROR PREVISUALIZAR', [
+            'mensaje' => $e->getMessage(),
+            'archivo' => $e->getFile(),
+            'linea' => $e->getLine()
+        ]);
 
         return response()->json([
-            'error' => 'Ocurrió un error al procesar el archivo: ' . $e->getMessage()
+            'error' => $e->getMessage()
         ], 500);
     }
 }
